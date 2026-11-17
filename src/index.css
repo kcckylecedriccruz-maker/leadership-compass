@@ -1,0 +1,120 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+  Formidea brand theme (formideaph.com): Public Sans, deep blue #005B99,
+  sky blue #2EA3F2, red call-to-action #D83024, grey body text, crisp corners.
+*/
+:root {
+  color-scheme: light;
+  --color-canvas: #f4f7fa;
+  --color-surface: #ffffff;
+  --color-muted: #edf2f7;
+  --color-line: #dbe3eb;
+  --color-ink: #16202a;
+  --color-ink-muted: #5c6773;
+  --color-primary: #005b99;
+  --color-primary-hover: #00477a;
+  --color-on-primary: #ffffff;
+  --color-sky: #2ea3f2;
+  --color-accent: #d83024;
+  --color-accent-hover: #b5261c;
+  --color-on-accent: #ffffff;
+  --color-brand-deep: #003a63;
+  --color-danger: #b42318;
+  --color-danger-soft: #fdf1f0;
+  --color-band-strength: #1d7a4c;
+  --color-band-developing: #a95d06;
+  --color-band-development: #b42318;
+  --color-band-unrated: #66747f;
+  --color-focus: #2ea3f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --color-canvas: #0a121b;
+    --color-surface: #101c28;
+    --color-muted: #162636;
+    --color-line: #233649;
+    --color-ink: #e8eef5;
+    --color-ink-muted: #9fb0c2;
+    --color-primary: #4fb3f5;
+    --color-primary-hover: #7cc6f7;
+    --color-on-primary: #04111c;
+    --color-sky: #6cc2f8;
+    --color-accent: #ff6b5e;
+    --color-accent-hover: #ff8b80;
+    --color-on-accent: #1a0503;
+    --color-brand-deep: #06223a;
+    --color-danger: #ff8a80;
+    --color-danger-soft: #3a211f;
+    --color-band-strength: #5fd08f;
+    --color-band-developing: #f2b15c;
+    --color-band-development: #ff8a80;
+    --color-band-unrated: #a3b3bd;
+    --color-focus: #6cc2f8;
+  }
+}
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-canvas text-ink font-sans antialiased;
+    line-height: 1.5;
+    min-height: 100vh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    line-height: 1.15;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  a {
+    text-underline-offset: 4px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-focus);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-on-primary transition-colors duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition-colors duration-200 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  /* Formidea's red call-to-action, for the one main action on public pages. */
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-on-accent transition-colors duration-200 hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-primary;
+  }
+
+  .field-input {
+    @apply w-full min-w-0 rounded-xl border border-line bg-surface px-4 py-3 text-base text-ink placeholder:text-ink-muted transition-colors duration-200 focus:border-primary;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

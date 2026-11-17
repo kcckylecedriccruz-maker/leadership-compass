@@ -1,0 +1,65 @@
+[functions.send-email]
+verify_jwt = false
+
+[functions.invite-assessor]
+verify_jwt = true
+
+[functions.create-talent]
+verify_jwt = true
+
+[functions.submit-assessment]
+verify_jwt = true
+
+[functions.reopen-assessment]
+verify_jwt = true
+
+[functions.daily-scheduler]
+verify_jwt = false
+
+[functions.forgot-password]
+verify_jwt = false
+
+[functions.request-activation-code]
+verify_jwt = false
+
+[functions.activate-account]
+verify_jwt = false
+
+[functions.resend-invite]
+verify_jwt = true
+
+[functions.add-existing-talents]
+verify_jwt = true
+
+[functions.update-notification-settings]
+verify_jwt = true
+
+[functions.unsubscribe]
+verify_jwt = false
+
+[functions.send-test-email]
+verify_jwt = true
+
+[functions.update-sender-settings]
+verify_jwt = true
+
+[functions.connect-gmail]
+verify_jwt = true
+
+[functions.gmail-oauth-callback]
+verify_jwt = false
+
+[functions.check-gmail-connection]
+verify_jwt = true
+
+[functions.manage-user]
+verify_jwt = true
+
+[functions.create-user]
+verify_jwt = true
+
+[functions.bulk-create-users]
+verify_jwt = true
+
+[functions.bulk-link-people]
+verify_jwt = true

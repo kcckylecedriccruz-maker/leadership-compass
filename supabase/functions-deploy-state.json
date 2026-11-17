@@ -1,0 +1,77 @@
+{
+  "projectId": "72932160",
+  "functions": {
+    "activate-account": {
+      "hasChanged": false,
+      "hash": "fc283cc2a6f538663933089beaf13c7e7b7df44b120a5edd75ab0e670f4e684d"
+    },
+    "add-existing-talents": {
+      "hasChanged": false,
+      "hash": "df879e341e18b7a703ac99b25d8b127a532d8b1c8e59da072f6192eda881322b6ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    },
+    "create-talent": {
+      "hasChanged": false,
+      "hash": "211385b9d36edf55b5073fc81a67bc4199314f88b1bafe0d22343b11f78ab9eb6ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    },
+    "daily-scheduler": {
+      "hasChanged": false,
+      "hash": "b6313d8e09af8751fddb52ecd45431f4a8c5829df4a10b3ce63e050e69cad905"
+    },
+    "forgot-password": {
+      "hasChanged": false,
+      "hash": "bbaf1f5fb363ea80a4fe9ab2d304b5363e5e2c82a5f6d72167f7bd0832aa1c43"
+    },
+    "invite-assessor": {
+      "hasChanged": false,
+      "hash": "502be5ddb625c1198f27c2bb427b5342c29fd685b099d0d117f2926b79849ea4"
+    },
+    "reopen-assessment": {
+      "hasChanged": false,
+      "hash": "34396b62c813cf6fac3ec1824321c53b8e6504ff2146423b0b80e9bd96052a97"
+    },
+    "request-activation-code": {
+      "hasChanged": false,
+      "hash": "5e89797746526ee3d779dd8aec0afdb215bf2a614bb2e595f0dd89fee3a98bc5"
+    },
+    "resend-invite": {
+      "hasChanged": false,
+      "hash": "be2c26c91e632824c0ba0d2816278975d7b7f7bbe43ad04bfc6ce36f2805e1d2"
+    },
+    "send-email": {
+      "hasChanged": false,
+      "hash": "e2db44c6f9134f74d275196fa148e6c5f0c45664de1d38bee92374039becc6906ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    },
+    "send-test-email": {
+      "hasChanged": false,
+      "hash": "75dfd4c3e087e0acfa17b0a3b65b4abb5ae554f0e2bbd7f0e0d166693138e085"
+    },
+    "submit-assessment": {
+      "hasChanged": false,
+      "hash": "c9e00f9acc7d1c2d3f0381afaec9421c6e62fde430483fb2808a150a3078b73e"
+    },
+    "unsubscribe": {
+      "hasChanged": false,
+      "hash": "dc12c54e4f42c9e8d3a5ef36bcabe993181006c77d7011b569a9b3824fcc1265"
+    },
+    "update-notification-settings": {
+      "hasChanged": false,
+      "hash": "bb497523fd56809fd0134cccdeb62ec3acd85ee3f975e07d6764df505a71025d"
+    },
+    "update-sender-settings": {
+      "hasChanged": false,
+      "hash": "5b882b723cfbcb8b6ff29e0a1c1c43f41af2188091edd8c91617e5694bc08cc16ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    },
+    "check-gmail-connection": {
+      "hasChanged": false,
+      "hash": "fc2ed2309d72e5301c8d0814aef9b900541eb7a3def9504f81c95f7fdcc480236ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    },
+    "connect-gmail": {
+      "hasChanged": false,
+      "hash": "3bc8cd034381ffa10e643b5fff52ee3efcdd607f12c8faad58681f1872acf0f2"
+    },
+    "gmail-oauth-callback": {
+      "hasChanged": false,
+      "hash": "86cb86558bef89cebcb642ec74277c00ca837a3109936729a04e27869030b1fd6ef763b3d32dae9f3fe1ba5127ecb8d37a6dc98e05243477db11aa163e471e84"
+    }
+  }
+}

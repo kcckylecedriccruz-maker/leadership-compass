@@ -1,136 +1,193 @@
-# Leadership Compass
+# Leadership Compass by Formidea
 
-A web app for running leadership self and 360 assessments. See yourself the way others see you, and chart your growth. Administrators set up review cycles and talents, managers and admins assign assessors, assessors complete feedback forms, and results are reported on a dashboard. Built with React 18, TypeScript, Vite, Tailwind CSS and Supabase.
+**See yourself the way others see you, and chart your growth.**
 
-## Secrets and where to set them
+Leadership Compass runs leadership **self and 360-degree assessments**. Administrators set up review cycles, people are
+invited by email, assessors rate 19 leadership competencies, and every talent gets a report with readiness, strengths,
+blind spots and a development plan. Feedback from peers and direct reports stays anonymous.
 
-Secrets are never stored in the code. Set each one where indicated.
+- **Live app:** https://leadership-compass-formidea.netlify.app
+- **Product requirements:** *Leadership Compass — Product Requirements* (shared document)
+- **Email setup:** [SETUP-EMAIL.md](SETUP-EMAIL.md)
+- **Rebuilding in Bolt:** [BOLT-BUILD-SCRIPT.md](BOLT-BUILD-SCRIPT.md) and [BOLT-PROMPT.md](BOLT-PROMPT.md)
 
-| Name | Where to set it | What it is for |
-| --- | --- | --- |
-| `GMAIL_SMTP_USER` | Edge function secrets | Gmail address that sends notifications and alerts (Gmail SMTP). See SETUP-EMAIL.md. |
-| `GMAIL_SMTP_APP_PASSWORD` | Edge function secrets | Google App password for that address. |
-| `RESEND_API_KEY` | Edge function secrets | Optional backup sender (Resend API key). |
-| `FROM_EMAIL` | Edge function secrets | The sender address shown on emails, for example `Assessments <no-reply@yourdomain.com>`. The domain must be verified in Resend. |
-| `APP_URL` | Edge function secrets | The public address of the app, for example `https://assess.yourcompany.com`. Used to build links in emails. |
-| `INTERNAL_SECRET` | Edge function secrets | Shared secret that lets the app's own functions ask the email function to send mail. Use a long random string. |
-| `CRON_SECRET` | Edge function secrets | Shared secret that proves a scheduler call is genuine. Use a long random string. |
-| `cron_secret` | Database vault (name must match exactly) | Holds the same value as `CRON_SECRET`, so the scheduled job can send it. |
+---
 
-### Setting edge function secrets
+## Contents
 
-1. Open the Supabase dashboard for this project.
-2. Go to **Project Settings > Edge Functions** and add each secret above (`RESEND_API_KEY`, `FROM_EMAIL`, `APP_URL`, `INTERNAL_SECRET`, `CRON_SECRET`).
-3. Use the same `INTERNAL_SECRET` and `CRON_SECRET` values wherever they are referenced; they are checked by exact match.
+1. [Features](#features)
+2. [Roles and access](#roles-and-access)
+3. [How it is built](#how-it-is-built)
+4. [Project structure](#project-structure)
+5. [Run it locally](#run-it-locally)
+6. [Set up Supabase](#set-up-supabase)
+7. [Publish the web app](#publish-the-web-app)
+8. [Using the app](#using-the-app)
+9. [Bulk upload reference](#bulk-upload-reference)
+10. [Security](#security)
+11. [Reference: edge functions and scripts](#reference-edge-functions-and-scripts)
+12. [Development](#development)
+13. [Troubleshooting](#troubleshooting)
 
-### Setting the vault entry for the scheduler
+---
 
-In the Supabase dashboard, open **SQL Editor** and run the statement below, replacing the placeholder with the same value you used for `CRON_SECRET`. Run it once. If the entry already exists, update it with `vault.update_secret` instead.
+## Features
 
-```sql
-select vault.create_secret('<the same value as CRON_SECRET>', 'cron_secret');
+| Area | What it does |
+| --- | --- |
+| **Assessments** | 19 competencies in 4 categories (Leading Self, Leading Others, Leading the Business, Leading Change). Each assessor gives a 1–5 rating and a behaviour note per competency; drafts save automatically; forms lock on submit and at the cycle's close date. |
+| **Review cycles** | Draft → open → closed, with reminders, submit alerts and a minimum group size for anonymity. Opening never blocks: the Cycles screen warns which talents still lack a manager, direct report or peer. |
+| **Reports** | Scores by assessor group, band (Strength / Developing / Development need), perception (Blind spot / Hidden strength / Aligned), readiness by category, three focus areas with actions, and a 30–360 day plan. |
+| **User control** | Add users (they choose their own password through an emailed 6-digit code), change roles, give **view or edit access per module**, deactivate and reactivate, require a new password, resend invites. |
+| **Groups** | Named groups (team, batch, cohort); filter and badge people by group. |
+| **Bulk upload** | Onboard up to 500 people from an Excel template, with department, position, immediate manager, direct reports, peers and groups. Every row is checked before anything is created. |
+| **Audit trail** | Append-only record of app actions, data changes (before/after) and sign-ins; search, filter and CSV export. |
+| **Notifications** | Invites, codes, reminders, confirmations, alerts and "dashboard ready" emails through Gmail; per-person preferences; admin-only settings. |
+| **Brand** | Formidea theme: Public Sans, deep blue `#005B99`, red call to action `#D83024`, light and dark mode, works on phones. |
+
+## Roles and access
+
+Everyone uses **one sign-in page**. What a person sees comes from their role and any module access an admin gives them.
+
+| Role | Can do |
+| --- | --- |
+| **Administrator** | Everything, including user control, module access, the audit trail and Notifications / Settings. |
+| **Manager** | Their team's dashboard; add and manage assessors for the talents they manage. |
+| **Assessor** | Fill in and submit the feedback forms assigned to them. |
+| **Talent** | Complete a self assessment; see their own report once their cycles have closed. |
+
+**Module access** (set per person in *Users > Access*): Dashboard and Audit trail (view), Cycles, People, Talents,
+Assignments and Users (view or edit). **Notifications / Settings is admin-only** and can never be granted. Access is
+enforced in the database and the server functions, not only by hiding buttons.
+
+Guardrails: nobody changes their own role, access or status; the last active administrator cannot be removed; only
+administrators create administrators or change module access.
+
+## How it is built
+
+| Layer | Technology |
+| --- | --- |
+| Web app | React 18, TypeScript, Vite, Tailwind CSS, lucide-react icons |
+| Data and sign-in | Supabase: Postgres with row-level security on every table, Supabase Auth |
+| Server logic | 22 Supabase Edge Functions (Deno) |
+| Email | Gmail SMTP with an App password (Gmail API with OAuth, and Resend, as fallbacks) |
+| Scheduling | `pg_cron` + `pg_net` call the `daily-scheduler` function every day at 00:00 UTC |
+| Excel | `read-excel-file` and `write-excel-file` (pinned versions, loaded only in the Bulk upload dialog) |
+| Hosting | Netlify (static site with security headers from [netlify.toml](netlify.toml)) |
+
+```mermaid
+flowchart LR
+  B[Web app<br/>React + Vite] -->|sign-in| A[Supabase Auth]
+  B -->|data, under row-level security| P[(Postgres)]
+  B -->|privileged actions| F[Edge functions]
+  F --> P
+  C[pg_cron daily 00:00 UTC] --> F
+  F -->|1st| G[Gmail SMTP]
+  F -.->|fallback| O[Gmail API / Resend]
 ```
 
-Do not commit the value to the repository.
+## Project structure
 
-## First administrator
+```
+.
+├── src/
+│   ├── auth/                 Sign-in state, profile and module access
+│   ├── components/           App shell, brand mark, modal, notices, badges
+│   ├── features/
+│   │   ├── assessments/      My assessments and the feedback form
+│   │   ├── assignments/      Assessors per cycle and talent
+│   │   ├── audit/            Audit trail screen
+│   │   ├── auth/             Sign-in, activation and forgot password
+│   │   ├── cycles/           Review cycles and coverage warnings
+│   │   ├── landing/          Public landing page sections
+│   │   ├── notifications/    Notification and sender settings (admin)
+│   │   ├── people/           Everyone with an account
+│   │   ├── reports/          Dashboard and talent report
+│   │   ├── talents/          Talents and their managers
+│   │   ├── tour/             Welcome tour
+│   │   └── users/            User control, groups and Excel bulk upload
+│   ├── lib/                  Supabase client, types, module access helpers
+│   └── pages/                Login, activate, workspace, privacy
+├── supabase/
+│   ├── migrations/           30 SQL migrations (schema, access rules, audit, reports)
+│   └── functions/            22 edge functions + _shared helpers
+├── scripts/                  Setup and sharing scripts (see Reference)
+├── public/                   Favicon and SPA redirects
+├── netlify.toml              Hosting build settings and security headers
+├── SETUP-EMAIL.md            Gmail setup guide
+├── BOLT-PROMPT.md            First message after importing into Bolt
+└── BOLT-BUILD-SCRIPT.md      12 prompts that rebuild the app in Bolt
+```
 
-Accounts are created by an administrator, so the first admin must be created from the command line once. The script refuses to run if an admin already exists.
+## Run it locally
 
-1. Set these environment variables in your terminal (not in the repository):
-   - `SUPABASE_URL` - the project URL.
-   - `SUPABASE_SERVICE_ROLE_KEY` - the service role key from **Project Settings > API**. Treat it as a password.
-   - `ADMIN_EMAIL` - the admin's work email.
-   - `ADMIN_FULL_NAME` - the admin's full name.
-   - `ADMIN_PASSWORD` - a temporary password of at least 8 characters.
-2. Run `node scripts/create-first-admin.mjs`.
-3. The admin signs in and is asked to choose a new password straight away.
-
-## Scheduler
-
-A scheduled job named `daily-scheduler` runs every day at 00:00 UTC (08:00 in Manila). It sends reminders for open assessments, closes cycles whose end date has passed, and sends the "dashboard ready" notice once per talent. It is set up in the database with `pg_cron` and `pg_net`, and calls the `daily-scheduler` edge function with the `x-cron-secret` header read from the vault.
-
-### Manual test run
-
-Run this once after setting the secrets to confirm the scheduler is accepted. Replace the placeholders with your project URL and the `CRON_SECRET` value.
+**Needs:** Node.js 20 or later (22 recommended) and a Supabase project that is already set up (next section).
 
 ```bash
-curl -i -X POST "https://<project-ref>.supabase.co/functions/v1/daily-scheduler" \
-  -H "x-cron-secret: <CRON_SECRET>" \
-  -H "Content-Type: application/json"
+npm ci
 ```
 
-A `200` response means the run worked. A `401` means the value does not match between the function secret and the vault. Check the `audit_log` table for scheduler entries after a successful run.
+Create a `.env` file in the project folder (it is git-ignored) with your project's public values from
+*Supabase > Project Settings > API*:
 
-## Adding cycles and assigning assessors
+```
+VITE_SUPABASE_URL=https://<project-ref>.supabase.co
+VITE_SUPABASE_ANON_KEY=<anon public key>
+```
 
-1. **Create a cycle.** Sign in as an administrator, open **Cycles**, and add a cycle with its opening and closing dates, reminder frequency and minimum group size. Keep it in draft until you are ready, then open it.
-2. **Add talents.** Open **Talents** and create each talent with their manager, department and position. Creating a talent also creates their login.
-3. **Assign assessors.** Open **Assignments**, choose the cycle and talent, and invite assessors. Each assessor receives an email with a link to their feedback form. Assessors can only see the talents assigned to them.
-4. **Track progress.** The **Reports** tab shows completion for each assignment. The **Dashboard** tab shows readiness once results are available.
+```bash
+npm run dev
+```
 
-Reopening a submitted form, changing an assessor's classification, and removing an assignment are all recorded in the audit log.
+Open http://localhost:5173. The anon key is public by design; never put the service role key in `.env`.
 
-## User control
+## Set up Supabase
 
-Everyone signs in on the same page; what they see depends on their role and module access.
+Do this once for a new Supabase project. Commands run from the project folder.
 
-Administrators open **Workspace > Users** to:
+**1. Sign in to the CLI and link the project**
 
-- **add a user** (name, work email, role, optional module access). The person gets an invitation email, opens
-  `/activate`, receives a 6-digit code and chooses their own password. Nobody else ever sees or sets it.
-- resend an invitation to someone who has not activated yet,
-- change a person's role (administrator, manager, assessor, talent),
-- set **module access**: for each module (Dashboard, Cycles, People, Talents, Assignments, Users, Audit trail,
-  Settings) choose None, View or Edit. Administrators always have full access.
-- deactivate an account (blocks sign-in; their assessment data is kept) and reactivate it,
-- require a new password at next sign-in, and correct a person's name.
+```bash
+npx supabase login
+```
 
-Module access is enforced in the database (row-level security and RPC checks) and in the edge functions, not only in
-the screen. Someone with Users edit access who is not an administrator can manage non-admin accounts only; only
-administrators can create administrators or change module access. You cannot change your own role, access or status,
-and the last active administrator cannot be removed. Accounts are created by `create-user` and changed by
-`manage-user`; both write audit entries.
+```bash
+npx supabase link --project-ref <project-ref>
+```
 
-### Groups and bulk upload
+**2. Create the database and deploy the functions**
 
-- **Groups** (Workspace > Users > Groups): named groupings such as a team, batch or cohort. A person can be in several
-  groups. Filter the user list by group; pick groups when adding a user. Stored in `user_groups` and
-  `user_group_members`; anyone with Users edit access can change them, and every change is audited.
-- **Bulk upload** (Workspace > Users > Bulk upload): download the Excel template and upload it back. Columns: Full
-  name*, Email*, Role*, Department, Position, Immediate manager (email), Direct reports (emails), Peers (emails), Groups,
-  Send invite. The template highlights bad cells in red inside Excel and has an Instructions sheet.
-  - Checks before anything is created: required fields, valid and unique emails, known roles, lengths, Yes/No, unknown
-    columns, references (manager, direct reports, peers must be in the file or already have an account), self references,
-    someone listed as both direct report and peer, reporting loops, admins uploaded only by admins, the example rows.
-  - Two phases: `bulk-create-users` creates (or, with "Update people who already have an account", updates name,
-    department, position and groups of) every account first; then `bulk-link-people` adds reporting lines for rows whose
-    role is talent: the manager makes them a talent (same steps as Add talent) and direct reports and peers become
-    assessors in every draft or open cycle. Roles are never changed by an upload.
-  - Rows with problems can be downloaded as Excel to fix and re-upload; results can be downloaded too. Up to 500 people.
+```bash
+npx supabase db push
+```
 
-## Audit trail
+```bash
+npx supabase functions deploy
+```
 
-Administrators open **Workspace > Audit trail** to search, filter (source, record type, date range), page through and
-export (CSV) the audit log. It contains:
+**3. Set the secrets** (*Edge Functions > Secrets*, or `npx supabase secrets set NAME=value`)
 
-- **App actions** written by the edge functions (invites, submissions, reopenings, user control, sender settings, scheduler runs).
-- **Data changes** recorded automatically by database triggers on profiles, talents, talent managers, cycles,
-  assignments and app settings, with before and after values. Secret columns and feedback ratings and notes are never copied.
-- **Sign-ins and sign-outs**.
+| Secret | What it is for |
+| --- | --- |
+| `GMAIL_SMTP_USER` | Gmail or Google Workspace address that sends every email |
+| `GMAIL_SMTP_APP_PASSWORD` | Google App password for that address (16 letters) |
+| `APP_URL` | Public address of the app, no trailing slash (used in email links) |
+| `INTERNAL_SECRET` | Long random string; lets the functions call the email function |
+| `CRON_SECRET` | Long random string; proves a scheduler call is genuine |
+| `RESEND_API_KEY`, `FROM_EMAIL` | Optional backup email sender |
 
-The log is append-only: a trigger rejects every update and delete. Exporting is itself recorded.
+The Gmail pair is easiest with the script below (it hides the password). Full Gmail steps are in [SETUP-EMAIL.md](SETUP-EMAIL.md).
 
-## Deploying these changes
+```bash
+powershell -ExecutionPolicy Bypass -File .\scripts\set-gmail-secrets.ps1
+```
 
-1. Apply the migration `supabase/migrations/20261117120000_audit_trail_and_user_control.sql`.
-2. Deploy the new `manage-user` edge function and redeploy `send-email`, `send-test-email` and `check-gmail-connection`.
-3. Set the Gmail SMTP secrets (see SETUP-EMAIL.md).
-
-The migrations enable `pg_cron` but do not create the daily job. On a new project, after setting `CRON_SECRET` and the
-`cron_secret` vault entry, run in SQL Editor (replace `<project-ref>`):
+**4. Schedule the daily job.** In *SQL Editor*, store the same value as `CRON_SECRET` in Vault, then schedule the call
+(replace the placeholders):
 
 ```sql
+select vault.create_secret('<same value as CRON_SECRET>', 'cron_secret');
+
 select cron.schedule('daily-scheduler', '0 0 * * *', $job$
   select net.http_post(
     url := 'https://<project-ref>.supabase.co/functions/v1/daily-scheduler',
@@ -140,19 +197,174 @@ select cron.schedule('daily-scheduler', '0 0 * * *', $job$
 $job$);
 ```
 
-On Windows, `& .\scripts\setup-first-admin.ps1` creates the first administrator for the linked project. It reads the
-service role key through the Supabase CLI and asks for the password with hidden input.
+The job opens draft cycles on their open date, sends reminders and digests, closes cycles after their close date and
+sends "dashboard ready" once per talent.
 
-## Sharing the app outside your network (temporary)
+**5. Create the first administrator** (asks for email, name and a hidden temporary password):
 
-Run `powershell -ExecutionPolicy Bypass -File .scriptsstart-public-link.ps1` and keep the window open. It starts the
-production build on port 4173 if needed, opens a free Cloudflare quick tunnel, prints the public https address and
-sets `APP_URL` so links in emails point there. Each run gets a new address; the link only works while your computer
-and that window stay on. For permanent use, host the built `dist` folder (for example on Netlify) and set `APP_URL`
-to that address.
+```bash
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-first-admin.ps1
+```
+
+On other systems set `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL`, `ADMIN_FULL_NAME` and
+`ADMIN_PASSWORD` in the terminal and run `node scripts/create-first-admin.mjs`.
+
+**6. Lock down sign-in** (*Authentication* in the Supabase dashboard):
+
+- *Sign In / Providers*: turn **off** "Allow new users to sign up". Accounts are created by admins only.
+- *Email*: minimum password length **12**.
+- *URL Configuration*: Site URL = your `APP_URL`.
+
+**7. Check email.** Sign in as the admin, open *Notifications > Sender settings*, choose Gmail and select
+**Check connection**; a test email arrives.
+
+## Publish the web app
+
+### Permanent: Netlify
+
+The build is a static site; [netlify.toml](netlify.toml) sets the build, single-page routing and security headers.
+
+```bash
+npm run build
+```
+
+```bash
+npx netlify-cli deploy --prod --dir dist
+```
+
+The first time, run `npx netlify-cli login` and create or link a site. In the Netlify project, set
+*Access & security > Visitor access* so production is public (protect non-production deploys only). Then set
+`APP_URL` to the site address and update the Content-Security-Policy `connect-src` in `netlify.toml` if you use a
+different Supabase project.
+
+### Temporary: share from your computer
+
+```bash
+powershell -ExecutionPolicy Bypass -File .\scripts\start-public-link.ps1
+```
+
+Starts the production build on port 4173, opens a free Cloudflare quick tunnel and sets `APP_URL` to the printed
+address. Keep the window open; each run gets a new address. Good for a quick demo only.
+
+## Using the app
+
+**Administrator quick start**
+
+1. **Cycles** → *New cycle*: name, dates, reminder days, minimum group size. Keep it in draft while you set up.
+2. **Users** → *Bulk upload* (or *Add user*): add everyone. Talents need an immediate manager; add direct reports and
+   peers in the same file. Everyone gets an invitation email.
+3. **Cycles**: check the coverage warning, then set the cycle to **Open** (or let the scheduler open it on its date).
+4. **Assignments**: add or adjust assessors per talent. Managers can do this for their own talents.
+5. **Dashboard**: follow completion and readiness; open a talent's report once everyone has submitted.
+
+**Everyone else**
+
+1. Open the invitation and select *Create your account*, or go to `/activate`.
+2. Enter your work email, then the 6-digit code from the email, and choose a password of 12 or more characters.
+3. Sign in. *My assessments* lists the forms to fill in; talents see *My report* after their cycle closes.
+
+## Bulk upload reference
+
+*Workspace > Users > Bulk upload > Download template* gives an Excel file with a **Users** sheet (headers, five example
+rows that are ignored, red highlights for mistakes) and an **Instructions** sheet.
+
+| Column | Required | Notes |
+| --- | --- | --- |
+| Full name | Yes | As it should appear in the app |
+| Email | Yes | Work email and sign-in; once per file |
+| Role | Yes | admin, manager, assessor or talent ("Administrator", "Leader", "Rater" also accepted) |
+| Department, Position | No | Saved for everyone |
+| Immediate manager (email) | For talents | Makes the person a talent; the manager gives Immediate-manager feedback |
+| Direct reports (emails) | No | Comma-separated; give Direct-report feedback |
+| Peers (emails) | No | Comma-separated; give Peer feedback |
+| Groups | No | Comma-separated; missing groups are created |
+| Send invite | No | Yes or No; blank means Yes |
+
+**Checked before upload:** .xlsx under 5 MB and at most 500 people; required fields; valid, unique emails; known roles;
+lengths; Yes/No; unknown columns; manager, direct reports and peers must be in the file or already have an account;
+no self-reference; nobody both direct report and peer; direct reports or peers need a manager; no reporting loops;
+only admins upload admins. Reporting lines are used only for rows whose role is talent.
+
+**Upload:** accounts first (so rows can refer to each other), then reporting lines. Existing accounts are skipped, or
+updated when *Update people who already have an account* is ticked (never their role). Download *rows with problems*
+to fix and upload again, and download the results when done.
+
+## Security
+
+| Area | How it is protected |
+| --- | --- |
+| Data access | Row-level security on all 20 tables; every database function a user can call checks permission first; server-only functions cannot be called by users or anonymous visitors. |
+| Module access | Checked in row-level security, database functions and edge functions. |
+| Accounts | Admin-created only (public sign-up off); people choose their own password via a 6-digit code (5 attempts, 15 minutes, 3 codes an hour); deactivated accounts are banned in Supabase Auth; a trigger stops non-admins changing roles, emails or status. |
+| Privacy | Peer and direct-report results are hidden below the cycle's minimum group size; ratings and notes are never copied into the audit trail. |
+| Secrets | Only in Supabase secrets and Vault; never in code, `.env` or git. Internal secrets are compared in constant time. |
+| Web | Content-Security-Policy (this site, Google Fonts and the Supabase project only), no framing, HSTS, nosniff, strict referrer, permissions policy. |
+| Audit | Append-only audit log of actions, data changes and sign-ins. |
+| Dependencies | Shipped packages have no known vulnerabilities; tool updates are limited to releases at least two weeks old. |
+
+Check the database with `npx supabase db advisors --type security`. Report a security problem to the project owner
+privately rather than in a public issue.
+
+## Reference: edge functions and scripts
+
+**Edge functions** (`supabase/functions`)
+
+| Function | Purpose | Who can call |
+| --- | --- | --- |
+| `request-activation-code`, `activate-account` | Account activation with a 6-digit code | Public (rate-limited) |
+| `forgot-password` | Temporary password by email | Public (rate-limited) |
+| `create-user`, `manage-user` | Add users; roles, access, status, rename | Users edit |
+| `bulk-create-users`, `bulk-link-people` | Excel bulk upload, accounts then reporting lines | Users edit (+ Talents and Assignments edit for links) |
+| `resend-invite` | Resend an account invitation | Users or Assignments edit, managers |
+| `create-talent`, `add-existing-talents` | Add talents with managers | Talents edit |
+| `invite-assessor` | Add an assessor to a talent in a cycle | Assignments edit, the talent's managers |
+| `submit-assessment`, `reopen-assessment` | Submit feedback; reopen by link | The assessor |
+| `send-email`, `send-test-email` | Render, send and log emails | Internal secret; admin |
+| `update-notification-settings`, `unsubscribe` | Email preferences | The person; admin for others |
+| `update-sender-settings`, `connect-gmail`, `gmail-oauth-callback`, `check-gmail-connection` | Sender settings and Gmail | Admin |
+| `daily-scheduler` | Daily opening, reminders, closing, notices | Cron secret |
+
+**Scripts** (`scripts/`, Windows PowerShell)
+
+| Script | What it does |
+| --- | --- |
+| `setup-first-admin.ps1` | Creates the first administrator for the linked project (uses `create-first-admin.mjs`) |
+| `set-gmail-secrets.ps1` | Saves the Gmail address and App password as Supabase secrets |
+| `start-public-link.ps1` | Shares the app through a temporary Cloudflare link and updates `APP_URL` |
+| `create-first-admin.mjs` | Cross-platform first-admin script driven by environment variables |
 
 ## Development
 
-- `npm run typecheck` checks types.
-- `npm run lint` runs the linter.
-- `npm run build` creates the production build.
+| Command | What it does |
+| --- | --- |
+| `npm run dev` | Development server on port 5173 |
+| `npm run typecheck` | TypeScript check |
+| `npm run lint` | ESLint |
+| `npm run build` | Production build in `dist/` |
+| `npm run preview` | Serve the production build on port 4173 |
+
+Typecheck, lint and build must pass before every deploy. Edge functions can be checked with
+`npx deno check --node-modules-dir=none supabase/functions/*/index.ts`.
+
+**Conventions**
+
+- Import with the `@/` alias for `src/`.
+- Every database change is a **new** migration in `supabase/migrations`; never edit an old one.
+- Gate new admin features on module access (`canView` / `canEdit` in the app, `hasModule` in functions,
+  `private.can_view` / `private.can_edit` in SQL), never on `role === 'admin'` alone.
+- Server actions that change data write an `audit_log` row (`source: 'app'`, dotted action such as `user.role_changed`).
+- Account creation rules live in `supabase/functions/_shared/userCreation.ts`; keep Add user and bulk upload on them.
+- `.bolt/memory.md` records decisions for Bolt; keep it current when the rules change.
+
+## Troubleshooting
+
+| What you see | What to do |
+| --- | --- |
+| No activation code arrives | The address must belong to an account an admin created. Check spam. Admins can *Resend invite*. |
+| "Something went wrong" on Create account | Request a new code; codes expire after 15 minutes or 5 wrong tries. |
+| An assessor sees no forms | The cycle may still be a draft (forms show "Not open yet"); open it in Cycles. |
+| A module tab is missing | Ask an admin for access in *Users > Access*; Notifications is admin-only. |
+| Emails are not sent | *Notifications > Sender settings > Check connection*; see [SETUP-EMAIL.md](SETUP-EMAIL.md). |
+| Email links point to the wrong address | Set the `APP_URL` secret to the current public address. |
+| The public site asks for a Netlify login | In Netlify set *Visitor access* so production is public. |
+| Scheduler did not run | Check that `CRON_SECRET` and the Vault `cron_secret` match, and that `cron.job` has `daily-scheduler`. |

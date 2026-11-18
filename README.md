@@ -143,6 +143,14 @@ $job$);
 On Windows, `& .\scripts\setup-first-admin.ps1` creates the first administrator for the linked project. It reads the
 service role key through the Supabase CLI and asks for the password with hidden input.
 
+## Sharing the app outside your network (temporary)
+
+Run `powershell -ExecutionPolicy Bypass -File .scriptsstart-public-link.ps1` and keep the window open. It starts the
+production build on port 4173 if needed, opens a free Cloudflare quick tunnel, prints the public https address and
+sets `APP_URL` so links in emails point there. Each run gets a new address; the link only works while your computer
+and that window stay on. For permanent use, host the built `dist` folder (for example on Netlify) and set `APP_URL`
+to that address.
+
 ## Development
 
 - `npm run typecheck` checks types.

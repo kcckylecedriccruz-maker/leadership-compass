@@ -1,5 +1,7 @@
 # Bolt prompt: Leadership Compass
 
+> To rebuild the app from a specification instead of importing this code, use `BOLT-BUILD-SCRIPT.md`.
+
 Paste the text below into Bolt as the first message after you import this project.
 
 ---

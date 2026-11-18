@@ -18,4 +18,8 @@ export default defineConfig({
     // crashes the watcher. Edge functions under supabase/ are never bundled here.
     watch: { ignored: ['**/*.zip', '**/supabase/**'] },
   },
+  preview: {
+    // Lets a temporary Cloudflare quick tunnel (https://*.trycloudflare.com) reach `npm run preview`.
+    allowedHosts: ['.trycloudflare.com'],
+  },
 });

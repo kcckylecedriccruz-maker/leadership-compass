@@ -428,18 +428,25 @@ function escapeHtml(value: string): string {
 const STYLE = {
   body: "margin:0;padding:0;background:#f5f7f8;font-family:system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;color:#13212b;",
   paragraph: "margin:0 0 16px;font-size:16px;line-height:1.5;color:#13212b;",
-  eyebrow: "margin:0 0 16px;font-size:13px;font-weight:600;color:#0f6e6a;",
+  eyebrow: "margin:0 0 16px;font-size:13px;font-weight:600;color:#005b99;",
   muted: "margin:0;font-size:13px;line-height:1.5;color:#556674;",
   button:
-    "display:inline-block;background:#0f6e6a;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 24px;border-radius:12px;",
+    "display:inline-block;background:#005b99;color:#ffffff;text-decoration:none;font-weight:600;font-size:16px;padding:14px 24px;border-radius:6px;",
 };
+
+// Codes and passwords are shown in a box that copies as one exact value (no stray spaces).
+const SECRET_LABEL = /password|code/i;
+const SECRET_VALUE_STYLE =
+  "display:inline-block;font-family:Consolas,Menlo,'Courier New',monospace;font-size:18px;font-weight:700;letter-spacing:1px;color:#003a63;background:#ffffff;border:1px dashed #005b99;border-radius:6px;padding:6px 12px;user-select:all;-webkit-user-select:all;";
 
 function detailsHtml(details: [string, string][]): string {
   const rows = details
     .map(
       ([label, value]) =>
         `<tr><td style="padding:6px 0;font-size:14px;color:#556674;vertical-align:top;width:40%;">${escapeHtml(label)}</td>` +
-        `<td style="padding:6px 0;font-size:15px;font-weight:600;color:#13212b;word-break:break-all;">${escapeHtml(value)}</td></tr>`,
+        (SECRET_LABEL.test(label)
+          ? `<td style="padding:6px 0;"><span style="${SECRET_VALUE_STYLE}">${escapeHtml(value)}</span></td></tr>`
+          : `<td style="padding:6px 0;font-size:15px;font-weight:600;color:#13212b;word-break:break-all;">${escapeHtml(value)}</td></tr>`),
     )
     .join("");
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#eef2f4;border-radius:12px;margin:0 0 24px;"><tr><td style="padding:12px 16px;"><table role="presentation" width="100%" cellspacing="0" cellpadding="0">${rows}</table></td></tr></table>`;
@@ -468,7 +475,7 @@ export function toHtml(email: RenderedEmail, senderName: string): string {
   const table = email.table ? tableHtml(email.table) : "";
   const button = email.button
     ? `<p style="margin:8px 0 16px;"><a href="${escapeHtml(email.button.url)}" style="${STYLE.button}">${escapeHtml(email.button.label)}</a></p>` +
-      `<p style="${STYLE.muted}margin-bottom:24px;">If the button does not work, copy this link into your browser:<br><a href="${escapeHtml(email.button.url)}" style="color:#0f6e6a;word-break:break-all;">${escapeHtml(email.button.url)}</a></p>`
+      `<p style="${STYLE.muted}margin-bottom:24px;">If the button does not work, copy this link into your browser:<br><a href="${escapeHtml(email.button.url)}" style="color:#005b99;word-break:break-all;">${escapeHtml(email.button.url)}</a></p>`
     : "";
   const footer = email.footer.map((text) => `<p style="${STYLE.muted}margin:0 0 8px;">${escapeHtml(text)}</p>`).join("");
   const lockedNote = email.lockedNote ? `<p style="${STYLE.muted}margin:0 0 8px;">${escapeHtml(LOCKED_NOTE)}</p>` : "";

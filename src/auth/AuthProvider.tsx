@@ -20,7 +20,9 @@ export type AuthContextValue = {
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
 const EXPIRED_TEMPORARY_PASSWORD_MESSAGE = 'Your temporary password has expired. Request a new one.';
-const DEACTIVATED_MESSAGE = 'This account has been deactivated. Contact your administrator if you need access.';
+// Zero-width spaces, joiners, byte-order marks and non-breaking spaces that copy-paste can add.
+const INVISIBLE_CHARACTERS = new RegExp("[\u200B-\u200D\u2060\uFEFF\u00A0]", "g");
+const DEACTIVATED_MESSAGE ='This account has been deactivated. Contact your administrator if you need access.';
 
 type ProfileResult = { profile: Profile } | { error: string };
 
@@ -127,7 +129,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signIn(email: string, password: string): Promise<string | null> {
     setSignInNotice(null);
-    const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+    const cleanEmail = email.replace(INVISIBLE_CHARACTERS, '').trim();
+    let { error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
+    // A password copied from an email often brings a space, line break or invisible character
+    // with it. Generated temporary passwords never contain those, so retry once without them.
+    const cleanPassword = password.replace(INVISIBLE_CHARACTERS, '').trim();
+    if (error && cleanPassword !== password && cleanPassword.length > 0) {
+      ({ error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password: cleanPassword }));
+    }
     if (error) {
       if (error.message.toLowerCase().includes('banned')) return DEACTIVATED_MESSAGE;
       return error.message.toLowerCase().includes('invalid login')
@@ -149,6 +158,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function changePassword(newPassword: string): Promise<string | null> {
     const { error: passwordError } = await supabase.auth.updateUser({ password: newPassword });
     if (passwordError) {
+      const code = (passwordError as { code?: string }).code ?? '';
+      if (code === 'same_password' || /different from the old/i.test(passwordError.message)) {
+        return 'Choose a new password that is different from your temporary password.';
+      }
+      if (code === 'weak_password' || /password/i.test(passwordError.message)) {
+        return `Your new password was not accepted: ${passwordError.message}`;
+      }
       return 'We could not update your password. Please try again.';
     }
     const { error: flagError } = await supabase.rpc('complete_password_change');

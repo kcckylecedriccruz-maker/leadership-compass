@@ -3,10 +3,12 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { AuthLayout, FormError } from '@/components/AuthLayout';
 
-const MIN_PASSWORD_LENGTH = 8;
+// Same rule as account activation (and the Supabase Auth minimum).
+const MIN_PASSWORD_LENGTH = 12;
 
 export function ChangePasswordPage() {
-  const { changePassword, signOut } = useAuth();
+  const { state, changePassword, signOut } = useAuth();
+  const email = state.status === 'signed_in' ? state.profile.email.toLowerCase() : '';
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -16,6 +18,10 @@ export function ChangePasswordPage() {
     event.preventDefault();
     if (password.length < MIN_PASSWORD_LENGTH) {
       setError(`Your new password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    if (email && password.toLowerCase() === email) {
+      setError('Your new password cannot be your email address.');
       return;
     }
     if (password !== confirmation) {
@@ -52,7 +58,7 @@ export function ChangePasswordPage() {
             required
           />
           <p id="password-hint" className="text-xs text-ink-muted">
-            At least {MIN_PASSWORD_LENGTH} characters.
+            At least {MIN_PASSWORD_LENGTH} characters, different from your temporary password and your email address.
           </p>
         </div>
         <div className="space-y-2">

@@ -155,7 +155,7 @@ function CycleCard({
         </div>
         <div>
           <dt className="text-ink-muted">Minimum group size</dt>
-          <dd className="font-semibold">{cycle.min_group_size}</dd>
+          <dd className="font-semibold">{cycle.min_group_size === 0 ? 'No minimum' : cycle.min_group_size}</dd>
         </div>
       </dl>
       {cycle.status !== 'closed' && <EvaluationActions cycle={cycle} canEdit={Boolean(onEdit)} onChanged={onChanged} />}

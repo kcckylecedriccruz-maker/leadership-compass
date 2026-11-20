@@ -105,8 +105,8 @@ function validate(values: FormValues): Validation {
   const reminderDays = parseWholeNumber(values.reminderDays, 1);
   if (reminderDays === null) return { ok: false, message: 'Reminders must be sent every one day or more.' };
 
-  const minGroupSize = parseWholeNumber(values.minGroupSize, 1);
-  if (minGroupSize === null) return { ok: false, message: 'The minimum group size must be one or more.' };
+  const minGroupSize = parseWholeNumber(values.minGroupSize, 0);
+  if (minGroupSize === null) return { ok: false, message: 'The minimum group size must be 0 or more.' };
 
   return {
     ok: true,
@@ -230,12 +230,12 @@ export function CycleDialog({ cycle, onClose, onSaved }: CycleDialogProps) {
           <FormField
             id="cycle-group"
             label="Minimum group size"
-            hint="The smallest number of responses shown together, to protect anonymity."
+            hint="The smallest number of Peer, Direct report or External responses shown together, to protect anonymity. 0 means no minimum: groups show as soon as anyone answers."
           >
             <input
               id="cycle-group"
               type="number"
-              min={1}
+              min={0}
               inputMode="numeric"
               className="field-input"
               value={values.minGroupSize}

@@ -3,7 +3,8 @@ import { HelpCircle, Loader2, Sparkles } from 'lucide-react';
 import type { Answer } from '@/features/assessments/assessmentModel';
 import { FormField } from '@/components/FormField';
 import { RATING_OPTIONS } from '@/features/assessments/assessmentModel';
-import type { AiResult, CoachResult } from '@/features/ai/aiApi';
+import type { AiResult, CoachResult, FormAi } from '@/features/ai/aiApi';
+import { BehaviourSuggestions, QuestionHelp } from '@/features/ai/FormHelpers';
 import type { CompetencyRecord } from '@/lib/records';
 
 type CompetencyItemProps = {
@@ -14,9 +15,11 @@ type CompetencyItemProps = {
   onChange: (change: Partial<Answer>) => void;
   /** AI note coach ("Improve with AI"). */
   onCoach?: (note: string) => Promise<AiResult<CoachResult>>;
+  /** AI help for this form: question help, rating suggestion, behaviour suggestions. */
+  ai?: FormAi;
 };
 
-export function CompetencyItem({ competency, answer, flagged, readOnly, onChange, onCoach }: CompetencyItemProps) {
+export function CompetencyItem({ competency, answer, flagged, readOnly, onChange, onCoach, ai }: CompetencyItemProps) {
   const number = competency.sort_order;
   const rating = answer?.rating ?? null;
   const note = answer?.note ?? '';
@@ -47,6 +50,11 @@ export function CompetencyItem({ competency, answer, flagged, readOnly, onChange
           <h3 className="text-base font-semibold">{competency.name}</h3>
           <p className="text-sm leading-relaxed text-ink-muted">{competency.definition}</p>
           {competency.help && <HelpPanel help={competency.help} />}
+          {!readOnly && ai && (
+            <div className="pt-2">
+              <QuestionHelp ai={ai} competencyId={competency.id} note={note} onUseRating={(value) => onChange({ rating: value })} />
+            </div>
+          )}
         </div>
       </div>
 
@@ -81,7 +89,14 @@ export function CompetencyItem({ competency, answer, flagged, readOnly, onChange
         />
       </FormField>
 
-      {!readOnly && onCoach && <NoteCoach note={note} onCoach={onCoach} onUse={(text) => onChange({ note: text })} />}
+      {!readOnly && (onCoach || ai) && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            {ai && <BehaviourSuggestions ai={ai} competencyId={competency.id} rating={rating} />}
+          </div>
+          {onCoach && <NoteCoach note={note} onCoach={onCoach} onUse={(text) => onChange({ note: text })} />}
+        </div>
+      )}
 
       {problem && (
         <p role="alert" className="text-sm font-semibold text-danger">

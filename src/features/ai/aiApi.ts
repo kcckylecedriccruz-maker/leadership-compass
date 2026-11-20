@@ -93,3 +93,45 @@ export async function coachNoteByLink(token: string, competencyId: string, note:
     return { ok: false, message: 'We could not reach the server. Check your connection and try again.' };
   }
 }
+
+// ---- Help while filling a form (signed in, or by secure link with the token) --------------------
+
+export type HelpMessage = { role: 'assessor' | 'assistant'; text: string };
+export type HelpResult = { answer: string; suggested_rating: number | null; rating_reason: string };
+export type BehaviourResult = { scenarios: { scenario: string; examples: string[]; starters: string[] }[] };
+export type HelpLanguage = 'en' | 'fil';
+
+/** Calls a form-help action as the signed-in user, or with the secure-link token when there is one. */
+async function formAi<T>(action: string, body: Record<string, unknown>, token?: string): Promise<AiResult<T>> {
+  if (!token) return call<T>(action, body);
+  try {
+    const response = await fetch(`${SUPABASE_URL}/functions/v1/ai-insights`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ action, token, ...body }),
+    });
+    const payload = (await response.json().catch(() => null)) as Record<string, unknown> | null;
+    if (response.ok && payload) return { ok: true, data: payload as unknown as T };
+    return { ok: false, message: typeof payload?.error === 'string' ? payload.error : 'The AI helper is not available right now.' };
+  } catch {
+    return { ok: false, message: 'We could not reach the server. Check your connection and try again.' };
+  }
+}
+
+export type FormAi = {
+  ask: (competencyId: string, messages: HelpMessage[], language: HelpLanguage) => Promise<AiResult<HelpResult>>;
+  suggestRating: (competencyId: string, note: string, language: HelpLanguage) => Promise<AiResult<HelpResult>>;
+  behaviours: (competencyId: string, rating: number | null, keywords: string, language: HelpLanguage) => Promise<AiResult<BehaviourResult>>;
+};
+
+/** AI help for one form (assignment). Pass the secure-link token on the link page. */
+export function formAiFor(assignmentId: string, token?: string): FormAi {
+  return {
+    ask: (competencyId, messages, language) =>
+      formAi('question_help', { assignment_id: assignmentId, competency_id: competencyId, messages, language }, token),
+    suggestRating: (competencyId, note, language) =>
+      formAi('question_help', { assignment_id: assignmentId, competency_id: competencyId, messages: [], note, suggest_rating: true, language }, token),
+    behaviours: (competencyId, rating, keywords, language) =>
+      formAi('suggest_behaviours', { assignment_id: assignmentId, competency_id: competencyId, rating, keywords, language }, token),
+  };
+}

@@ -180,6 +180,7 @@ function LinkForm({
       actions={{
         ...linkActions(token, assessment.id),
         coach: (competencyId, note) => coachNoteByLink(token, competencyId, note, assessment.classification),
+        aiToken: token,
       }}
       backLabel="Back to my forms"
     />

@@ -2,7 +2,7 @@
 //
 // Admins:  person_summary, cycle_insights, explain_draft, save_help, ask, compare_cycles, person_trend
 // Managers (reports shared with them): team_insights
-// Anyone filling a form (signed in or by secure link): coach_note
+// Anyone filling a form (signed in or by secure link): coach_note, question_help, suggest_behaviours
 //
 // Names never reach the AI service: free text is scrubbed of everyone's names and people in data are replaced by codes
 // like [P3], which are swapped back to names after the AI answers.
@@ -160,6 +160,130 @@ ${scrub(note)}
     schema,
     effort: "low",
     maxTokens: 4000,
+  });
+}
+
+// ---- 2b. Help understanding a question (and an optional rating suggestion) --------------------
+
+const RATING_SCALE = "1 = Rarely, 2 = Sometimes, 3 = Often, 4 = Usually, 5 = Always";
+
+/**
+ * Who is asking, checked against the evaluation: a signed-in assessor must own it; a secure-link user must hold the
+ * link for that person and cycle. Returns the evaluated person's role details (never their name or scores).
+ */
+async function helpContext(admin: Admin, req: Request, body: Body) {
+  const assignmentId = uuid(body, "assignment_id", "form");
+  const { data } = await admin
+    .from("assignments")
+    .select("id, assessor_id, cycle_id, classification, talent:talents!talent_id(department, position)")
+    .eq("id", assignmentId)
+    .maybeSingle();
+  const row = data as unknown as {
+    assessor_id: string;
+    cycle_id: string;
+    classification: string;
+    talent: { department: string | null; position: string | null } | null;
+  } | null;
+  if (!row) throw new AccessError(404, "This form could not be found.");
+  if (typeof body.token === "string") {
+    const link = await resolveLink(admin, body.token);
+    if (link.person.id !== row.assessor_id || link.cycle.id !== row.cycle_id) throw new AccessError(403, "This form belongs to someone else.");
+  } else {
+    const caller = await callerFromRequest(admin, req);
+    if (!caller.isActive) throw new AccessError(403, "Your account is deactivated.");
+    if (caller.id !== row.assessor_id) throw new AccessError(403, "This form belongs to someone else.");
+  }
+  return { self: row.classification === "self", position: row.talent?.position ?? null, department: row.talent?.department ?? null };
+}
+
+async function questionHelp(admin: Admin, req: Request, body: Body) {
+  const context = await helpContext(admin, req, body);
+  const competencyId = uuid(body, "competency_id", "question");
+  const { data: competency } = await admin.from("competencies").select("name, category, definition, help").eq("id", competencyId).maybeSingle();
+  if (!competency) throw new AccessError(404, "That question could not be found.");
+  const language = body.language === "fil" ? "Filipino (Tagalog)" : "simple English";
+  const scrub = await nameScrubber(admin);
+
+  // A short conversation about this one item: at most 5 questions from the assessor.
+  const raw = Array.isArray(body.messages) ? body.messages : [];
+  const messages = raw
+    .filter((m): m is { role: string; text: string } => typeof m === "object" && m !== null && typeof (m as Body).text === "string")
+    .map((m) => ({ role: m.role === "assistant" ? "assistant" : "assessor", text: scrub(m.text.trim().slice(0, 1000)) }))
+    .slice(-10);
+  const questions = messages.filter((m) => m.role === "assessor").length;
+  const suggest = body.suggest_rating === true;
+  if (!suggest && (questions === 0 || messages[messages.length - 1]?.role !== "assessor")) throw new AccessError(400, "Type a question first.");
+  if (questions > 5) throw new AccessError(429, "That is the limit for this question. Start again if you need more help.");
+  const note = typeof body.note === "string" ? scrub(body.note.trim().slice(0, 2000)) : "";
+  if (suggest && note.length < 10) throw new AccessError(400, "Write your behaviour example first; the suggestion is based on it.");
+
+  const who = context.self
+    ? "The assessor is rating themselves (self-assessment)."
+    : `The assessor is rating a colleague${context.position ? ` whose role is ${context.position}` : ""}${context.department ? ` in ${context.department}` : ""}.`;
+  const task = suggest
+    ? `Suggest the rating (1-5) that best fits the behaviour example below, using the scale ${RATING_SCALE}. Base it only on what the example describes; if the example is too vague to judge, set suggested_rating to 0 and explain what detail is missing. Put a short explanation in answer and a one-sentence reason in rating_reason. Remind them the final rating is their own judgement.
+
+<behaviour_example>
+${note}
+</behaviour_example>`
+    : `Answer the assessor's latest question about this item. Keep it short (under 120 words), concrete, and use examples that fit the role described. Do not suggest a rating; set suggested_rating to 0 and rating_reason to "".`;
+
+  const result = await askJson<{ answer: string; suggested_rating: number | null; rating_reason: string }>({
+    system: `You help people understand one item in a leadership feedback form so they can answer it fairly. Answer in ${language}. Stay on this item; politely decline unrelated requests. Never invent facts about the person being rated. '[name]' marks a removed name.`,
+    user: `Item: ${competency.name} (${competency.category}) - ${competency.definition}
+Rating scale: ${RATING_SCALE}.
+${who}
+${competency.help ? `Existing help text: ${JSON.stringify(competency.help)}` : ""}
+
+<conversation>
+${messages.map((m) => `${m.role}: ${m.text}`).join("\n")}
+</conversation>
+
+${task}`,
+    schema: S.obj({
+      answer: S.str,
+      suggested_rating: { type: "integer", enum: [0, 1, 2, 3, 4, 5] },
+      rating_reason: S.str,
+    }),
+    effort: "low",
+    maxTokens: 4000,
+  });
+  const rating = suggest && Number.isInteger(result.suggested_rating) && result.suggested_rating! >= 1 && result.suggested_rating! <= 5 ? result.suggested_rating : null;
+  return { answer: result.answer, suggested_rating: rating, rating_reason: suggest ? result.rating_reason : "" };
+}
+
+/**
+ * Scenarios with observable behaviours and fill-in starters for one item, to help the assessor recall and describe
+ * what they actually saw. Nothing is written into the note; the assessor copies a starter if they want one.
+ */
+async function suggestBehaviours(admin: Admin, req: Request, body: Body) {
+  const context = await helpContext(admin, req, body);
+  const competencyId = uuid(body, "competency_id", "question");
+  const { data: competency } = await admin.from("competencies").select("name, category, definition").eq("id", competencyId).maybeSingle();
+  if (!competency) throw new AccessError(404, "That question could not be found.");
+  const rating = typeof body.rating === "number" && Number.isInteger(body.rating) && body.rating >= 1 && body.rating <= 5 ? body.rating : null;
+  const scrub = await nameScrubber(admin);
+  const keywords = typeof body.keywords === "string" ? scrub(body.keywords.trim().slice(0, 200)) : "";
+  const language = body.language === "fil" ? "Filipino (Tagalog)" : "simple English";
+  const who = context.self
+    ? "The assessor is describing their own behaviour (self-assessment), so write examples in the first person (I...)."
+    : `The assessor is describing a colleague${context.position ? ` whose role is ${context.position}` : ""}${context.department ? ` in ${context.department}` : ""}; write examples in the third person (they...).`;
+
+  return await askJson<{ scenarios: { scenario: string; examples: string[]; starters: string[] }[] }>({
+    system: `You help people write specific, observable behaviour examples for a leadership feedback form. Answer in ${language}. Behaviours must be things someone could see or hear (actions, words, decisions), never personality labels. Never invent facts about the person; starters use [brackets] for details only the assessor knows.`,
+    user: `Item: ${competency.name} (${competency.category}) - ${competency.definition}
+Rating scale: ${RATING_SCALE}.
+${who}
+${rating ? `The assessor chose rating ${rating}. Include behaviours that fit that level (for lower ratings, also what was missing or happened only sometimes).` : "No rating chosen yet: cover a range from weak to strong."}
+${keywords ? `Situations the assessor mentioned: ${keywords}. Shape at least two scenarios around them.` : ""}
+
+Give 4-6 workplace scenarios where this item shows (for example team meetings, a tight deadline, a client issue, giving feedback, a mistake or setback). For each scenario:
+- scenario: a short title (2-6 words).
+- examples: 3-4 observable behaviours in that scenario, one short sentence each.
+- starters: 1-2 fill-in sentences the assessor can complete, like "During [situation], they [what they did], which [result]."`,
+    schema: S.obj({ scenarios: S.arr(S.obj({ scenario: S.str, examples: S.strs, starters: S.strs })) }),
+    effort: "low",
+    maxTokens: 6000,
   });
 }
 
@@ -485,6 +609,8 @@ Deno.serve(async (req) => {
 
     // The note coach also serves people on the secure-link page, who have no sign-in.
     if (body.action === "coach_note") return json(await coachNote(admin, req, body), 200);
+    if (body.action === "question_help") return json(await questionHelp(admin, req, body), 200);
+    if (body.action === "suggest_behaviours") return json(await suggestBehaviours(admin, req, body), 200);
 
     const caller = await callerFromRequest(admin, req);
     if (!caller.isActive) throw new AccessError(403, "Your account is deactivated.");

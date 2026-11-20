@@ -26,7 +26,7 @@ import {
 } from '@/features/assessments/assessmentActions';
 import type { SubmitItem } from '@/features/assessments/assessmentModel';
 import type { FunctionResult } from '@/lib/edgeFunctions';
-import { coachNoteSignedIn, type AiResult, type CoachResult } from '@/features/ai/aiApi';
+import { coachNoteSignedIn, formAiFor, type AiResult, type CoachResult } from '@/features/ai/aiApi';
 import { ASSIGNMENT_STATUS_LABELS, daysLeftLabel } from '@/lib/format';
 import type { AssignmentStatus } from '@/lib/records';
 
@@ -53,6 +53,8 @@ export type FormActions = {
   reopen?: () => Promise<ActionResult>;
   /** AI note coach; defaults to the signed-in version. */
   coach?: (competencyId: string, note: string) => Promise<AiResult<CoachResult>>;
+  /** Secure-link token, so the AI helpers work without sign-in. */
+  aiToken?: string;
 };
 
 type AssessmentFormProps = {
@@ -69,6 +71,7 @@ export function AssessmentForm({ detail, onBack, actions, backLabel = 'Back to m
     clear: () => clearAssessmentDraft(summary.id),
     submit: (copyRequested, items) => submitAssessment(summary.id, copyRequested, items),
   };
+  const formAi = useMemo(() => formAiFor(summary.id, act.aiToken), [summary.id, act.aiToken]);
   const coach =
     act.coach ?? ((competencyId: string, note: string) => coachNoteSignedIn(competencyId, note, summary.classification ?? 'peer'));
   const [answers, setAnswers] = useState<AnswerMap>(detail.answers);
@@ -247,6 +250,7 @@ export function AssessmentForm({ detail, onBack, actions, backLabel = 'Back to m
                       flagged={flagged.includes(competency.sort_order)}
                       readOnly={readOnly}
                       onCoach={(note) => coach(competency.id, note)}
+                      ai={formAi}
                       onChange={(change) => updateAnswer(competency.sort_order, change)}
                     />
                   ))}

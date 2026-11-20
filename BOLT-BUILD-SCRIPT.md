@@ -394,6 +394,9 @@ Change the people model. Everyone is an employee who is assessed and gives feedb
 - UI: Workspace > Org structure (tree, manager select, department, position, exclusions, peers); My team for
   people with direct reports (approve peers, shared reports); My peers card under My assessments; cycle dialog
   switches; Build / Refresh evaluations and Send invitations now on each cycle.
+- Administrators can Restart a cycle (rpc restart_cycle: remove all answers, reset evaluations, back to draft)
+  or Delete it (rpc delete_cycle), each confirmed by typing the cycle name; one audit row each.
+- Cycle warning lists only employees whose sole evaluation is their self-assessment.
 ```
 
 **Check:** open a cycle and see a self-assessment for everyone plus manager, skip-level, upward and peer evaluations

@@ -1,7 +1,9 @@
 import { useCallback, useState } from 'react';
 import { AlertTriangle, CalendarDays, Loader2, Pencil, Plus, RefreshCw, Send } from 'lucide-react';
+import { useAuth } from '@/auth/useAuth';
 import { Badge, type BadgeTone } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
+import { CycleDangerActions } from '@/features/cycles/CycleDangerActions';
 import { CycleDialog } from '@/features/cycles/CycleDialog';
 import { loadCycles } from '@/features/cycles/cycleQueries';
 import { CYCLE_STATUS_LABELS, formatDate, pluralise } from '@/lib/format';
@@ -22,6 +24,10 @@ type DialogState = { mode: 'create' } | { mode: 'edit'; cycle: CycleRecord } | n
 export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
   const { state, reload } = useAsyncData(loadCycles);
   const [dialog, setDialog] = useState<DialogState>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const { state: auth } = useAuth();
+  // Restart and Delete remove submitted feedback, so they are for administrators only.
+  const isAdmin = auth.status === 'signed_in' && auth.profile.role === 'admin';
 
   return (
     <section className="space-y-6" aria-labelledby="cycles-heading">
@@ -41,6 +47,8 @@ export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
         </button>
         )}
       </div>
+
+      {notice && <Notice tone="info">{notice}</Notice>}
 
       {state.status === 'loading' && <p className="text-sm text-ink-muted">Loading cycles...</p>}
 
@@ -64,7 +72,22 @@ export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
         <ul className="space-y-4">
           {state.data.map((cycle) => (
             <li key={cycle.id}>
-              <CycleCard cycle={cycle} onEdit={canEdit ? () => setDialog({ mode: 'edit', cycle }) : undefined} onChanged={reload} />
+              <CycleCard
+                cycle={cycle}
+                onEdit={canEdit ? () => setDialog({ mode: 'edit', cycle }) : undefined}
+                onChanged={reload}
+                danger={
+                  isAdmin ? (
+                    <CycleDangerActions
+                      cycle={cycle}
+                      onChanged={(message) => {
+                        setNotice(message);
+                        reload();
+                      }}
+                    />
+                  ) : null
+                }
+              />
             </li>
           ))}
         </ul>
@@ -84,7 +107,17 @@ export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
   );
 }
 
-function CycleCard({ cycle, onEdit, onChanged }: { cycle: CycleRecord; onEdit?: () => void; onChanged: () => void }) {
+function CycleCard({
+  cycle,
+  onEdit,
+  onChanged,
+  danger,
+}: {
+  cycle: CycleRecord;
+  onEdit?: () => void;
+  onChanged: () => void;
+  danger?: React.ReactNode;
+}) {
   return (
     <article className="rounded-card border border-line bg-surface p-6 transition-shadow duration-200 hover:shadow-md">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -98,11 +131,16 @@ function CycleCard({ cycle, onEdit, onChanged }: { cycle: CycleRecord; onEdit?: 
             {formatDate(cycle.opens_at)} to {formatDate(cycle.closes_at)}
           </p>
         </div>
-{onEdit && (
-                  <button type="button" onClick={onEdit} className="btn-secondary">
-          <Pencil className="h-4 w-4" aria-hidden="true" />
-          Edit
-        </button>
+        {(onEdit || danger) && (
+          <div className="flex flex-wrap gap-2">
+            {onEdit && (
+              <button type="button" onClick={onEdit} className="btn-secondary">
+                <Pencil className="h-4 w-4" aria-hidden="true" />
+                Edit
+              </button>
+            )}
+            {danger}
+          </div>
         )}
       </div>
       <dl className="mt-5 grid grid-cols-1 gap-4 border-t border-line pt-5 text-sm sm:grid-cols-3">
@@ -120,23 +158,35 @@ function CycleCard({ cycle, onEdit, onChanged }: { cycle: CycleRecord; onEdit?: 
         </div>
       </dl>
       {cycle.status !== 'closed' && <EvaluationActions cycle={cycle} canEdit={Boolean(onEdit)} onChanged={onChanged} />}
-      {cycle.status === 'open' && <CoverageWarning cycleId={cycle.id} />}
+      {cycle.status !== 'closed' && <CoverageWarning cycleId={cycle.id} />}
     </article>
   );
 }
 
-type CoverageGap = { gap_talent_id: string; gap_talent_name: string; gap_missing: string[] };
+type SoloPerson = { id: string; name: string };
 
 /**
- * Lists talents who are missing an assessor type in this cycle. A warning, not a
- * block: the cycle can still open, and reports hide groups too small to stay anonymous.
+ * Lists employees in this cycle whose only evaluation is their own self-assessment, so their report would
+ * have no one else's feedback. A warning, not a block: missing groups (no direct reports, no peers) are normal.
  */
 function CoverageWarning({ cycleId }: { cycleId: string }) {
   const load = useCallback(async () => {
-    const { data, error } = await supabase.rpc('cycle_coverage_gaps', { p_cycle_id: cycleId });
-    // People without the right to check coverage simply see no warning.
-    if (error) return [] as CoverageGap[];
-    return (data ?? []) as CoverageGap[];
+    const { data, error } = await supabase
+      .from('assignments')
+      .select('talent_id, classification, talent:talents(profile:profiles!profile_id(full_name))')
+      .eq('cycle_id', cycleId);
+    // People without the right to read every evaluation simply see no warning.
+    if (error || !data) return [] as SoloPerson[];
+    const others = new Set<string>();
+    const names = new Map<string, string>();
+    for (const row of data as unknown as { talent_id: string; classification: string; talent: { profile: { full_name: string } | null } | null }[]) {
+      if (row.classification !== 'self') others.add(row.talent_id);
+      names.set(row.talent_id, row.talent?.profile?.full_name ?? 'Unknown');
+    }
+    return [...names]
+      .filter(([id]) => !others.has(id))
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
   }, [cycleId]);
   const { state } = useAsyncData(load);
   if (state.status !== 'ready' || state.data.length === 0) return null;
@@ -145,18 +195,12 @@ function CoverageWarning({ cycleId }: { cycleId: string }) {
     <div className="mt-5 rounded-2xl border border-band-developing/40 bg-band-developing/10 p-4 text-sm">
       <p className="flex items-center gap-2 font-semibold text-ink">
         <AlertTriangle className="h-4 w-4 shrink-0 text-band-developing" aria-hidden="true" />
-        {pluralise(state.data.length, 'employee')} with no one assigned to evaluate them
+        {pluralise(state.data.length, 'employee')} with only a self-assessment
       </p>
-      <ul className="mt-2 space-y-1 text-ink-muted">
-        {state.data.map((gap) => (
-          <li key={gap.gap_talent_id}>
-            <span className="font-semibold text-ink">{gap.gap_talent_name}</span>: no {gap.gap_missing.join(', ').toLowerCase()}
-          </li>
-        ))}
-      </ul>
+      <p className="mt-2 text-ink-muted">{state.data.map((person) => person.name).join(', ')}</p>
       <p className="mt-2 text-xs text-ink-muted">
-        You can still open the cycle. Add assessors under Assignments for a fuller 360; groups with fewer responses
-        than the minimum group size are hidden in reports to keep feedback anonymous.
+        No one else evaluates them in this cycle. Give them a manager or peers in Org structure and select Refresh
+        evaluations, or add an evaluation under Assignments.
       </p>
     </div>
   );

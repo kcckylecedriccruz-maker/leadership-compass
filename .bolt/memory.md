@@ -84,3 +84,4 @@
 - Peers: peer_relationships with RPCs suggest_peer, assign_peer, decide_peer, remove_peer. No minimum or maximum. Employee suggests, immediate manager approves; admin/manager assign directly.
 - Reports: admin-only by default. report_shares + share_report/unshare_report let admins share consolidated or individual reports with the immediate or skip-level manager. individual_feedback(cycle, talent) names only managers' feedback. Employees see their own report after the cycle closes (private.can_view_cycle_report).
 - send-cycle-invites edge function sends invitations for an open cycle immediately (60 per call; loop until remaining = 0).
+- restart_cycle(cycle, confirm_name) / delete_cycle(cycle, confirm_name): admin only, name must match. Restart deletes responses, resets assignments to not_started, clears shares/notices, sets draft. Delete removes notifications, notices, shares, responses, assignments, then the cycle. Both write one audit_log row (counts only).

@@ -16,6 +16,8 @@ type AddAssessorDialogProps = {
   people?: ProfileRef[];
   /** People already evaluating this person in this cycle (hidden from the list). */
   assignedIds?: Set<string>;
+  /** assessor id -> the type they already have, to explain why they are not listed. */
+  assignedKinds?: Map<string, Classification>;
   onAdded: () => void;
   onClose: () => void;
 };
@@ -23,7 +25,7 @@ type AddAssessorDialogProps = {
 // Everyone except Self and Immediate manager is chosen by email.
 const PERSON_TYPES: readonly Classification[] = ['skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'];
 
-export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), onAdded, onClose }: AddAssessorDialogProps) {
+export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), assignedKinds = new Map(), onAdded, onClose }: AddAssessorDialogProps) {
   const [classification, setClassification] = useState<Classification | null>(null);
   const [picked, setPicked] = useState<PickerValue>(null);
   const [email, setEmail] = useState('');
@@ -146,6 +148,7 @@ export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), onAd
               <EmployeePicker
                 subjectProfileId={talent.profile_id}
                 excludeIds={assignedIds}
+                excludeKinds={assignedKinds}
                 kind={classification}
                 value={picked}
                 onChange={(value) => {

@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { Check, Search, UserPlus, X } from 'lucide-react';
+import { CLASSIFICATION_LABELS } from '@/lib/format';
 import type { Classification } from '@/lib/records';
 import { supabase } from '@/lib/supabase';
 import { useAsyncData } from '@/lib/useAsyncData';
@@ -53,12 +54,14 @@ export type PickerValue = { kind: 'existing'; employee: Employee } | { kind: 'ne
 export function EmployeePicker({
   subjectProfileId,
   excludeIds,
+  excludeKinds,
   kind,
   value,
   onChange,
 }: {
   subjectProfileId: string;
   excludeIds: Set<string>;
+  excludeKinds?: Map<string, Classification>;
   kind: Classification;
   value: PickerValue;
   onChange: (value: PickerValue) => void;
@@ -77,6 +80,12 @@ export function EmployeePicker({
       (!needle || [e.full_name, e.email, e.position ?? '', e.department ?? ''].some((v) => v.toLowerCase().includes(needle))),
   );
   const top = available.filter((e) => suggested.has(e.id));
+  const hidden = employees
+    .filter((e) => excludeIds.has(e.id) && e.id !== subjectProfileId)
+    .map((e) => {
+      const k = excludeKinds?.get(e.id);
+      return { name: e.full_name, label: k ? `already ${CLASSIFICATION_LABELS[k]}` : 'already assigned' };
+    });
   const rest = available.filter((e) => !suggested.has(e.id));
 
   if (value?.kind === 'existing') {
@@ -147,6 +156,12 @@ export function EmployeePicker({
           </ul>
         )}
       </div>
+      {hidden.length > 0 && (
+        <p className="text-xs text-ink-muted">
+          Not shown because they already evaluate this person in this cycle:{' '}
+          {hidden.map((h) => `${h.name} (${h.label})`).join(', ')}. Deactivated accounts are not listed.
+        </p>
+      )}
     </div>
   );
 }

@@ -78,3 +78,6 @@ verify_jwt = false
 
 [functions.edit-profile]
 verify_jwt = true
+
+[functions.ai-insights]
+verify_jwt = false

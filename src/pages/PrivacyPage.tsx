@@ -26,6 +26,14 @@ const SECTIONS: { title: string; body: string[] }[] = [
     ],
   },
   {
+    title: 'AI features',
+    body: [
+      'Some features use Claude, an AI service by Anthropic: feedback summaries and insights for administrators, team insights for managers, help text for the form, and the optional Improve with AI button for behaviour notes.',
+      'Before anything is sent, the names of people in the system are removed from written feedback, and people in score data are replaced by codes. Ratings and anonymised feedback text are sent only when someone uses one of these features.',
+      'Everything AI-generated is labelled as such and should be checked by a person before it is relied on.',
+    ],
+  },
+  {
     title: 'Email',
     body: [
       `${APP_NAME} sends notification emails from its own Gmail account through the Gmail API. The app is granted permission to send email only. It cannot read, change or delete anything in any mailbox.`,

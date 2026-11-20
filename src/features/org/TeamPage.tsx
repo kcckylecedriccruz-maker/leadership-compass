@@ -7,6 +7,7 @@ import { PeerManager } from '@/features/org/PeerManager';
 import { QuickAddDialog } from '@/features/org/QuickAddDialog';
 import { loadOrg } from '@/features/org/orgData';
 import { SharedReports } from '@/features/reports/SharedReports';
+import { TeamInsights } from '@/features/ai/TeamInsights';
 import type { Profile } from '@/lib/types';
 import { useAsyncData } from '@/lib/useAsyncData';
 
@@ -108,6 +109,8 @@ export function TeamPage({ profile }: { profile: Profile }) {
       </section>
 
       <SharedReports />
+
+      <TeamInsights />
     </div>
   );
 }

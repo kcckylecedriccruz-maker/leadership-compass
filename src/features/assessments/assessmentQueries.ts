@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 export type AssessmentSummary = {
   id: string;
   status: AssignmentStatus;
+  classification?: string;
   cycle: { id: string; name: string; closes_at: string; status: CycleStatus };
   talent: { id: string; full_name: string; department: string | null; position: string | null };
 };
@@ -18,6 +19,7 @@ export type AssessmentDetail = {
 type SummaryRow = {
   id: string;
   status: AssignmentStatus;
+  classification?: string;
   cycle: { id: string; name: string; closes_at: string; status: CycleStatus };
   talent: {
     id: string;
@@ -34,12 +36,13 @@ type ResponseRow = {
 };
 
 const SUMMARY_SELECT =
-  'id, status, cycle:cycles!cycle_id(id, name, closes_at, status), talent:talents!talent_id(id, department, position, profile:profiles!profile_id(full_name))';
+  'id, status, classification, cycle:cycles!cycle_id(id, name, closes_at, status), talent:talents!talent_id(id, department, position, profile:profiles!profile_id(full_name))';
 
 function toSummary(row: SummaryRow): AssessmentSummary {
   return {
     id: row.id,
     status: row.status,
+    classification: row.classification,
     cycle: row.cycle,
     talent: {
       id: row.talent.id,
@@ -69,7 +72,7 @@ export async function loadMyAssessments(assessorId: string): Promise<AssessmentS
 export async function loadAssessmentDetail(assignmentId: string): Promise<AssessmentDetail | null> {
   const [summaryResult, competencyResult, responseResult] = await Promise.all([
     supabase.from('assignments').select(SUMMARY_SELECT).eq('id', assignmentId).maybeSingle(),
-    supabase.from('competencies').select('id, category, name, definition, sort_order').order('sort_order'),
+    supabase.from('competencies').select('id, category, name, definition, sort_order, help').order('sort_order'),
     supabase.from('responses').select('competency_id, rating, behaviour_note').eq('assignment_id', assignmentId),
   ]);
   if (summaryResult.error) throw summaryResult.error;

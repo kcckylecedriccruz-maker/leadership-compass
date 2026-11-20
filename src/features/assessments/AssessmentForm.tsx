@@ -26,6 +26,7 @@ import {
 } from '@/features/assessments/assessmentActions';
 import type { SubmitItem } from '@/features/assessments/assessmentModel';
 import type { FunctionResult } from '@/lib/edgeFunctions';
+import { coachNoteSignedIn, type AiResult, type CoachResult } from '@/features/ai/aiApi';
 import { ASSIGNMENT_STATUS_LABELS, daysLeftLabel } from '@/lib/format';
 import type { AssignmentStatus } from '@/lib/records';
 
@@ -50,6 +51,8 @@ export type FormActions = {
   submit: (copyRequested: boolean, items: SubmitItem[]) => Promise<FunctionResult<unknown>>;
   /** Link users change a submitted form here instead of using the emailed edit link. */
   reopen?: () => Promise<ActionResult>;
+  /** AI note coach; defaults to the signed-in version. */
+  coach?: (competencyId: string, note: string) => Promise<AiResult<CoachResult>>;
 };
 
 type AssessmentFormProps = {
@@ -66,6 +69,8 @@ export function AssessmentForm({ detail, onBack, actions, backLabel = 'Back to m
     clear: () => clearAssessmentDraft(summary.id),
     submit: (copyRequested, items) => submitAssessment(summary.id, copyRequested, items),
   };
+  const coach =
+    act.coach ?? ((competencyId: string, note: string) => coachNoteSignedIn(competencyId, note, summary.classification ?? 'peer'));
   const [answers, setAnswers] = useState<AnswerMap>(detail.answers);
   const [status, setStatus] = useState<AssignmentStatus>(summary.status);
   const [step, setStep] = useState<Step>('edit');
@@ -241,6 +246,7 @@ export function AssessmentForm({ detail, onBack, actions, backLabel = 'Back to m
                       answer={answers[competency.sort_order]}
                       flagged={flagged.includes(competency.sort_order)}
                       readOnly={readOnly}
+                      onCoach={(note) => coach(competency.id, note)}
                       onChange={(change) => updateAnswer(competency.sort_order, change)}
                     />
                   ))}

@@ -97,3 +97,9 @@
 - external_evaluators(external_id, evaluator_id): admin-only RPCs add_outside_evaluator / remove_outside_evaluator. Outside people get a talents row (manage-people add_outside_person), no self-assessment; evaluations are kind 'peer', origin 'external'. share_report allows any active employee for an outside person.
 - Deletion: request_account_deletion / cancel_account_deletion (admin, deactivated accounts only). purge_due_deletions() (service role) anonymises after 3 days; purge-deleted-accounts (hourly pg_cron, CRON_SECRET) then deletes the auth user. profiles no longer has an FK to auth.users. manage-user refuses any change while deletion is pending. Deleted profiles have deleted_at set and are hidden from User control.
 - readiness_ranking returns category employee | outside | deleted (ranked within each); the Dashboard groups by it.
+
+## AI features (migrations 20261120180000, 20261120190000)
+- Edge function ai-insights (verify_jwt false; it authenticates itself, and coach_note also accepts a secure-link token). Claude via npm:@anthropic-ai/sdk@1.6.0, model claude-opus-5-5, structured outputs (output_config.format json_schema), server-side fallbacks. Key: ANTHROPIC_API_KEY secret (scripts/set-anthropic-key.ps1).
+- Never send names: nameScrubber() on free text, Pseudonyms ([P3] codes) on data, restore() after the answer.
+- Tables: ai_person_summaries, ai_cycle_insights (admin read only; writes via the function). competencies.help jsonb {plain, looks_like[], not_like[], think_about}.
+- restart_cycle clears AI rows; delete_cycle cascades.

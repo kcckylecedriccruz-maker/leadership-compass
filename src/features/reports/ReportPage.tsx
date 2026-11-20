@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { ArrowLeft, Copy, Printer } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { Notice } from '@/components/Notice';
+import { AiSummary } from '@/features/ai/AiSummary';
 import { IndividualFeedback } from '@/features/reports/IndividualFeedback';
 import { SharePanel } from '@/features/reports/SharePanel';
 import { ReadinessSummary, ScoreTable } from '@/features/reports/ReportScores';
@@ -17,10 +18,11 @@ type ReportPageProps = {
   onBack: () => void;
 };
 
-type AdminView = 'report' | 'individual' | 'share';
+type AdminView = 'report' | 'ai' | 'individual' | 'share';
 
 const ADMIN_VIEWS: { id: AdminView; label: string }[] = [
   { id: 'report', label: 'Consolidated report' },
+  { id: 'ai', label: 'AI summary' },
   { id: 'individual', label: 'Individual feedback' },
   { id: 'share', label: 'Share with managers' },
 ];
@@ -62,6 +64,7 @@ export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
           ))}
         </div>
       )}
+      {isAdmin && view === 'ai' && <AiSummary cycleId={cycleId} talentId={talentId} />}
       {isAdmin && view === 'individual' && <IndividualFeedback cycleId={cycleId} talentId={talentId} />}
       {isAdmin && view === 'share' && <SharePanel cycleId={cycleId} talentId={talentId} />}
 

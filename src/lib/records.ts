@@ -55,6 +55,8 @@ export type CompetencyRecord = {
   name: string;
   definition: string;
   sort_order: number;
+  /** Plain-English help drafted by AI and edited by admins. */
+  help?: { plain: string; looks_like: string[]; not_like: string[]; think_about: string } | null;
 };
 
 export type AssignmentRecord = {

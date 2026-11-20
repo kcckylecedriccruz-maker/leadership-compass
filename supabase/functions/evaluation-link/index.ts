@@ -93,7 +93,7 @@ async function openLink(admin: Admin, link: ResolvedLink) {
 async function loadDetail(admin: Admin, link: ResolvedLink, assignmentId: string) {
   await ownAssessment(admin, link, assignmentId);
   const [competencies, responses] = await Promise.all([
-    admin.from("competencies").select("id, category, name, definition, sort_order").order("sort_order"),
+    admin.from("competencies").select("id, category, name, definition, sort_order, help").order("sort_order"),
     admin.from("responses").select("competency_id, rating, behaviour_note").eq("assignment_id", assignmentId),
   ]);
   if (competencies.error) throw new Error(`Could not load competencies: ${competencies.error.message}`);

@@ -2,18 +2,24 @@ import { useState } from 'react';
 import { AuditTrailPanel } from '@/features/audit/AuditTrailPanel';
 import { AssignmentsPanel } from '@/features/assignments/AssignmentsPanel';
 import { CyclesPanel } from '@/features/cycles/CyclesPanel';
+import { InsightsPanel } from '@/features/ai/InsightsPanel';
 import { OrgStructurePanel } from '@/features/org/OrgStructurePanel';
 import { DashboardPanel } from '@/features/reports/DashboardPanel';
 import { UserControlPanel } from '@/features/users/UserControlPanel';
 import { MODULE_LABELS, canEdit, canView, type Module, type Profile } from '@/lib/types';
 
 // The Org structure tab uses the 'talents' module key, so existing module access carries over.
-type Section = Exclude<Module, 'settings' | 'people'>;
+// Insights (AI) is for administrators only and is not a grantable module.
+type Section = Exclude<Module, 'settings' | 'people'> | 'insights';
 
-const WORKSPACE_SECTIONS: Section[] = ['dashboard', 'cycles', 'talents', 'assignments', 'users', 'audit'];
+const WORKSPACE_SECTIONS: Exclude<Section, 'insights'>[] = ['dashboard', 'cycles', 'talents', 'assignments', 'users', 'audit'];
 
 export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' }) {
-  const sections = WORKSPACE_SECTIONS.filter((section) => canView(profile, section));
+  const isAdminUser = profile.role === 'admin';
+  const sections: Section[] = [
+    ...WORKSPACE_SECTIONS.filter((section) => canView(profile, section as Module)),
+    ...(isAdminUser ? (['insights'] as Section[]) : []),
+  ];
   const [selected, setSelected] = useState<Section>(sections[0] ?? 'dashboard');
   const section = sections.includes(selected) ? selected : sections[0];
   const isAdmin = profile.role === 'admin';
@@ -43,8 +49,8 @@ export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' })
                 isSelected ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
               }`}
             >
-              {MODULE_LABELS[id]}
-              {!canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
+              {id === 'insights' ? 'Insights' : MODULE_LABELS[id]}
+              {id !== 'insights' && !canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
                 <span className="ml-1.5 text-xs font-normal text-ink-muted">(view)</span>
               )}
             </button>
@@ -60,6 +66,7 @@ export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' })
       )}
       {section === 'users' && <UserControlPanel currentUser={profile} canEdit={canEdit(profile, 'users')} />}
       {section === 'audit' && <AuditTrailPanel />}
+      {section === 'insights' && <InsightsPanel />}
     </div>
   );
 }

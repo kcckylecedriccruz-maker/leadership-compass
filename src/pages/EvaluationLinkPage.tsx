@@ -5,6 +5,7 @@ import { BrandMark } from '@/components/BrandMark';
 import { Notice } from '@/components/Notice';
 import { AssessmentForm } from '@/features/assessments/AssessmentForm';
 import { ASSIGNMENT_STATUS_TONES } from '@/features/assessments/assessmentModel';
+import { coachNoteByLink } from '@/features/ai/aiApi';
 import { linkActions, loadLinkForm, openLink, type LinkAssessment, type LinkSession } from '@/features/link/linkApi';
 import { ASSIGNMENT_STATUS_LABELS, daysLeftLabel } from '@/lib/format';
 import { useAsyncData } from '@/lib/useAsyncData';
@@ -176,7 +177,10 @@ function LinkForm({
         answers: state.data.value.answers,
       }}
       onBack={onBack}
-      actions={linkActions(token, assessment.id)}
+      actions={{
+        ...linkActions(token, assessment.id),
+        coach: (competencyId, note) => coachNoteByLink(token, competencyId, note, assessment.classification),
+      }}
       backLabel="Back to my forms"
     />
   );

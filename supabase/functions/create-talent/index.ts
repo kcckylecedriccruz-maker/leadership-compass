@@ -176,7 +176,7 @@ Deno.serve(async (req) => {
 
     let primaryManagerId = input.primaryManagerId;
     if (input.newManager) {
-      const created = await createAccount(admin, input.newManager, "assessor");
+      const created = await createAccount(admin, input.newManager, "employee");
       createdAccountIds.push(created.id);
       managerIds = [...managerIds, created.id];
       primaryManagerId = primaryManagerId ?? created.id;
@@ -184,7 +184,7 @@ Deno.serve(async (req) => {
 
     const accounts: CreatedAccount[] = [];
     if (input.talent.kind === "new") {
-      const talentAccount = await createAccount(admin, input.talent.person, "talent");
+      const talentAccount = await createAccount(admin, input.talent.person, "employee");
       createdAccountIds.push(talentAccount.id);
       accounts.push(talentAccount);
       talentProfileId = talentAccount.id;

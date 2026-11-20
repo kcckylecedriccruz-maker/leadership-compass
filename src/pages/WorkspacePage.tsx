@@ -2,21 +2,18 @@ import { useState } from 'react';
 import { AuditTrailPanel } from '@/features/audit/AuditTrailPanel';
 import { AssignmentsPanel } from '@/features/assignments/AssignmentsPanel';
 import { CyclesPanel } from '@/features/cycles/CyclesPanel';
-import { PeoplePanel } from '@/features/people/PeoplePanel';
+import { OrgStructurePanel } from '@/features/org/OrgStructurePanel';
 import { DashboardPanel } from '@/features/reports/DashboardPanel';
-import { TalentsPanel } from '@/features/talents/TalentsPanel';
 import { UserControlPanel } from '@/features/users/UserControlPanel';
 import { MODULE_LABELS, canEdit, canView, type Module, type Profile } from '@/lib/types';
 
-type Section = Exclude<Module, 'settings'>;
+// The Org structure tab uses the 'talents' module key, so existing module access carries over.
+type Section = Exclude<Module, 'settings' | 'people'>;
 
-const WORKSPACE_SECTIONS: Section[] = ['dashboard', 'cycles', 'people', 'talents', 'assignments', 'users', 'audit'];
-const MANAGER_SECTIONS: Section[] = ['dashboard', 'assignments'];
+const WORKSPACE_SECTIONS: Section[] = ['dashboard', 'cycles', 'talents', 'assignments', 'users', 'audit'];
 
-export function WorkspacePage({ profile, mode }: { profile: Profile; mode: 'admin' | 'team' }) {
-  const isWorkspace = mode === 'admin';
-  // The workspace shows only the modules this person may view; a manager's team view keeps its two tabs.
-  const sections = isWorkspace ? WORKSPACE_SECTIONS.filter((section) => canView(profile, section)) : MANAGER_SECTIONS;
+export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' }) {
+  const sections = WORKSPACE_SECTIONS.filter((section) => canView(profile, section));
   const [selected, setSelected] = useState<Section>(sections[0] ?? 'dashboard');
   const section = sections.includes(selected) ? selected : sections[0];
   const isAdmin = profile.role === 'admin';
@@ -28,8 +25,8 @@ export function WorkspacePage({ profile, mode }: { profile: Profile; mode: 'admi
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <p className="eyebrow">{isWorkspace ? (isAdmin ? 'Administration' : 'Workspace') : 'Your team'}</p>
-        <h1 className="text-3xl sm:text-4xl">{isWorkspace ? 'Set up the assessments' : 'Your assessments'}</h1>
+        <p className="eyebrow">{isAdmin ? 'Administration' : 'Workspace'}</p>
+        <h1 className="text-3xl sm:text-4xl">Set up the assessments</h1>
       </div>
 
       <div role="tablist" aria-label="Workspace sections" className="flex gap-1 overflow-x-auto rounded-2xl bg-muted p-1">
@@ -47,7 +44,7 @@ export function WorkspacePage({ profile, mode }: { profile: Profile; mode: 'admi
               }`}
             >
               {MODULE_LABELS[id]}
-              {isWorkspace && !canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
+              {!canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
                 <span className="ml-1.5 text-xs font-normal text-ink-muted">(view)</span>
               )}
             </button>
@@ -57,16 +54,10 @@ export function WorkspacePage({ profile, mode }: { profile: Profile; mode: 'admi
 
       {section === 'dashboard' && <DashboardPanel />}
       {section === 'cycles' && <CyclesPanel canEdit={canEdit(profile, 'cycles')} />}
-      {section === 'people' && (
-        <PeoplePanel canEdit={canEdit(profile, 'people') && canEdit(profile, 'talents')} canManageNotifications={isAdmin} />
+      {section === 'talents' && <OrgStructurePanel canEdit={canEdit(profile, 'talents')} />}
+      {section === 'assignments' && (
+        <AssignmentsPanel isAdmin={canEdit(profile, 'assignments')} canAdd={canEdit(profile, 'assignments')} />
       )}
-      {section === 'talents' && <TalentsPanel canEdit={canEdit(profile, 'talents')} />}
-      {section === 'assignments' &&
-        (isWorkspace ? (
-          <AssignmentsPanel isAdmin={canEdit(profile, 'assignments')} canAdd={canEdit(profile, 'assignments')} />
-        ) : (
-          <AssignmentsPanel isAdmin={false} canAdd managerId={profile.id} />
-        ))}
       {section === 'users' && <UserControlPanel currentUser={profile} canEdit={canEdit(profile, 'users')} />}
       {section === 'audit' && <AuditTrailPanel />}
     </div>

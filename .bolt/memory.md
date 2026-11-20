@@ -73,4 +73,14 @@
 - Bulk upload: `src/features/users/bulkUpload.ts` (template via write-excel-file, parsing via read-excel-file, both pinned exact versions) and `BulkUploadDialog.tsx` (lazy-loaded so the Excel libraries stay out of the main bundle).
 - Server: `bulk-create-users` (max 25 rows per call) and `create-user` share `_shared/userCreation.ts` (`createOneUser`, `ensureGroups`). Keep all account-creation rules there.
 - Bulk template columns: Full name*, Email*, Role*, Department, Position, Immediate manager, Direct reports, Peers, Groups, Send invite. `profiles.department/position` exist for everyone (migration 20261117200000).
-- Phase 2 `bulk-link-people` only handles rows whose effective role is talent (existing accounts keep their current role). Reporting-line rules mirror create-talent; keep them in sync.
+- Phase 2 `bulk-link-people` runs for every row: sets profiles.manager_id, sets the manager of each listed direct report, and adds peers via rpc("assign_peer"). Needs Users edit + Org structure (talents) edit.
+
+## Org model (migrations 20261120100000, 20261120110000, 20261120120000)
+- Roles are only 'admin' and 'employee'. Everyone is assessed and gives feedback; "manager" is derived (has rows where profiles.manager_id = id), never a role.
+- profiles.manager_id is the source of truth for reporting lines (loop guard trigger; mirrored into talent_managers and talents.immediate_manager_id for compatibility). Every profile automatically has a talents row. Skip-level = manager's manager, computed.
+- profiles.exclude_rated / exclude_rater / exclude_self: exclusions from being rated, rating others, self-assessment. Changing manager_id or exclusions needs can_edit('talents').
+- Assignment kinds: self, immediate_manager, skip_level_manager, direct_report, skip_level_report, peer. assignments.origin: auto | peer | manual. Cycles have include_* switches and evaluations_generated_at.
+- public.generate_cycle_evaluations(cycle) builds from private.desired_evaluations; runs on open (trigger cycles_generate_on_open) and on admin refresh. It only removes auto/peer rows that are not started and have no answers; never touch manual rows.
+- Peers: peer_relationships with RPCs suggest_peer, assign_peer, decide_peer, remove_peer. No minimum or maximum. Employee suggests, immediate manager approves; admin/manager assign directly.
+- Reports: admin-only by default. report_shares + share_report/unshare_report let admins share consolidated or individual reports with the immediate or skip-level manager. individual_feedback(cycle, talent) names only managers' feedback. Employees see their own report after the cycle closes (private.can_view_cycle_report).
+- send-cycle-invites edge function sends invitations for an open cycle immediately (60 per call; loop until remaining = 0).

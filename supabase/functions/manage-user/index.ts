@@ -12,7 +12,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const ROLES = ["admin", "manager", "assessor", "talent"] as const;
+const ROLES = ["admin", "employee"] as const;
 type Role = (typeof ROLES)[number];
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 // About 100 years: Supabase Auth has no "forever" ban.

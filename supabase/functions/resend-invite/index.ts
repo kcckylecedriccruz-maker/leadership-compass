@@ -45,7 +45,9 @@ async function requireCaller(admin: SupabaseClient, req: Request): Promise<{ id:
   const asCaller = { id: profile.id, email: "", role: profile.role, isActive: profile.is_active !== false };
   const canResendAll =
     (await hasModule(admin, asCaller, "users", "edit")) || (await hasModule(admin, asCaller, "assignments", "edit"));
-  if (!canResendAll && profile.role !== "manager") {
+  // Managers (people with direct reports in the org structure) can resend to their own team.
+  const { count: reports } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("manager_id", profile.id);
+  if (!canResendAll && (reports ?? 0) === 0) {
     throw new RequestError(403, "Only administrators and managers can resend invitations.");
   }
   return { id: profile.id, role: canResendAll ? "admin" : profile.role };

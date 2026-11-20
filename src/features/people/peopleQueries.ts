@@ -50,7 +50,7 @@ export async function loadPeople(): Promise<PersonEntry[]> {
       email: profile.email,
       role: profile.role,
       activated_at: profile.activated_at,
-      isAssessor: profile.role === 'assessor' || assessorIds.has(profile.id),
+      isAssessor: assessorIds.has(profile.id),
       talentId: talent?.id ?? null,
       managesTalents: managerIds.has(profile.id),
       managerNeeded: talent !== null && !talentsWithManager.has(talent.id),

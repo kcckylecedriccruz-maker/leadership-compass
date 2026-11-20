@@ -3,8 +3,8 @@
 **See yourself the way others see you, and chart your growth.**
 
 Leadership Compass runs leadership **self and 360-degree assessments**. Administrators set up review cycles, people are
-invited by email, assessors rate 19 leadership competencies, and every talent gets a report with readiness, strengths,
-blind spots and a development plan. Feedback from peers and direct reports stays anonymous.
+invited by email, and every employee rates 19 leadership competencies for themselves and for the people around them in
+the org structure. Each person gets a report with readiness, strengths, blind spots and a development plan. Feedback from peers and direct reports stays anonymous.
 
 - **Live app:** https://leadership-compass-formidea.netlify.app
 - **Product requirements:** *Leadership Compass — Product Requirements* (shared document)
@@ -36,8 +36,9 @@ blind spots and a development plan. Feedback from peers and direct reports stays
 | Area | What it does |
 | --- | --- |
 | **Assessments** | 19 competencies in 4 categories (Leading Self, Leading Others, Leading the Business, Leading Change). Each assessor gives a 1–5 rating and a behaviour note per competency; drafts save automatically; forms lock on submit and at the cycle's close date. |
-| **Review cycles** | Draft → open → closed, with reminders, submit alerts and a minimum group size for anonymity. Opening never blocks: the Cycles screen warns which talents still lack a manager, direct report or peer. |
-| **Reports** | Scores by assessor group, band (Strength / Developing / Development need), perception (Blind spot / Hidden strength / Aligned), readiness by category, three focus areas with actions, and a 30–360 day plan. |
+| **Org structure** | Org chart of reporting lines (immediate manager; skip-level is automatic). Peers per person with no minimum or maximum: employees suggest, the immediate manager approves; admins and managers assign directly. Per-person exclusions: not rated by others, does not rate others, no self-assessment. |
+| **Review cycles** | Draft → open → closed, with reminders, submit alerts and a minimum group size for anonymity. Each cycle chooses which relationships to include (self, manager, skip-level manager, direct reports, skip-level reports, peers). Opening builds every evaluation from the org structure as a snapshot; admins can refresh it and send invitations immediately. |
+| **Reports** | Admin-only by default, with *Individual feedback* (named for managers, anonymous for others) and sharing of the consolidated or individual report with the immediate or skip-level manager. Employees see their own report automatically after the cycle closes. Scores by rater group, band (Strength / Developing / Development need), perception (Blind spot / Hidden strength / Aligned), readiness by category, three focus areas with actions, and a 30–360 day plan. |
 | **User control** | Add users (they choose their own password through an emailed 6-digit code), change roles, give **view or edit access per module**, deactivate and reactivate, require a new password, resend invites. |
 | **Groups** | Named groups (team, batch, cohort); filter and badge people by group. |
 | **Bulk upload** | Onboard up to 500 people from an Excel template, with department, position, immediate manager, direct reports, peers and groups. Every row is checked before anything is created. |
@@ -52,11 +53,12 @@ Everyone uses **one sign-in page**. What a person sees comes from their role and
 | Role | Can do |
 | --- | --- |
 | **Administrator** | Everything, including user control, module access, the audit trail and Notifications / Settings. |
-| **Manager** | Their team's dashboard; add and manage assessors for the talents they manage. |
-| **Assessor** | Fill in and submit the feedback forms assigned to them. |
-| **Talent** | Complete a self assessment; see their own report once their cycles have closed. |
+| **Employee** | Everyone else. Completes a self-assessment and the evaluations generated from the org structure; suggests peers; sees their own report after the cycle closes. |
 
-**Module access** (set per person in *Users > Access*): Dashboard and Audit trail (view), Cycles, People, Talents,
+There is no separate manager role: anyone who has direct reports in the org structure also gets **My team** (approve
+peer suggestions, assign peers, see reports an administrator shared with them).
+
+**Module access** (set per person in *Users > Access*): Dashboard and Audit trail (view), Cycles, People, Org structure,
 Assignments and Users (view or edit). **Notifications / Settings is admin-only** and can never be granted. Access is
 enforced in the database and the server functions, not only by hiding buttons.
 
@@ -250,18 +252,19 @@ address. Keep the window open; each run gets a new address. Good for a quick dem
 
 **Administrator quick start**
 
-1. **Cycles** → *New cycle*: name, dates, reminder days, minimum group size. Keep it in draft while you set up.
-2. **Users** → *Bulk upload* (or *Add user*): add everyone. Talents need an immediate manager; add direct reports and
-   peers in the same file. Everyone gets an invitation email.
-3. **Cycles**: check the coverage warning, then set the cycle to **Open** (or let the scheduler open it on its date).
-4. **Assignments**: add or adjust assessors per talent. Managers can do this for their own talents.
-5. **Dashboard**: follow completion and readiness; open a talent's report once everyone has submitted.
+1. **Users** → *Bulk upload* (or *Add user*): add everyone with their immediate manager, direct reports and peers.
+2. **Org structure**: check the chart, set exclusions, and approve or assign peers.
+3. **Cycles** → *New cycle*: name, dates, which relationships to include, reminder days, minimum group size.
+   *Build evaluations now* previews the result while it is a draft.
+4. Set the cycle to **Open** (or let the scheduler open it): evaluations are generated, then *Send invitations now*.
+5. **Assignments**: add manual evaluations if needed. **Dashboard**: follow completion; open a report to see
+   *Individual feedback* or *Share with managers*.
 
 **Everyone else**
 
 1. Open the invitation and select *Create your account*, or go to `/activate`.
 2. Enter your work email, then the 6-digit code from the email, and choose a password of 12 or more characters.
-3. Sign in. *My assessments* lists the forms to fill in; talents see *My report* after their cycle closes.
+3. Sign in. *My assessments* lists the forms to fill in (including your self-assessment) and your peers; *My report* opens after the cycle closes.
 
 ## Bulk upload reference
 
@@ -272,18 +275,18 @@ rows that are ignored, red highlights for mistakes) and an **Instructions** shee
 | --- | --- | --- |
 | Full name | Yes | As it should appear in the app |
 | Email | Yes | Work email and sign-in; once per file |
-| Role | Yes | admin, manager, assessor or talent ("Administrator", "Leader", "Rater" also accepted) |
+| Role | Yes | admin or employee (older words manager, assessor, talent, leader, rater are read as employee) |
 | Department, Position | No | Saved for everyone |
-| Immediate manager (email) | For talents | Makes the person a talent; the manager gives Immediate-manager feedback |
-| Direct reports (emails) | No | Comma-separated; give Direct-report feedback |
-| Peers (emails) | No | Comma-separated; give Peer feedback |
+| Immediate manager (email) | No | Who the person reports to; skip-level is worked out automatically |
+| Direct reports (emails) | No | Comma-separated; sets those people's manager to this row |
+| Peers (emails) | No | Comma-separated; added as approved peers who give this person Peer feedback |
 | Groups | No | Comma-separated; missing groups are created |
 | Send invite | No | Yes or No; blank means Yes |
 
 **Checked before upload:** .xlsx under 5 MB and at most 500 people; required fields; valid, unique emails; known roles;
 lengths; Yes/No; unknown columns; manager, direct reports and peers must be in the file or already have an account;
-no self-reference; nobody both direct report and peer; direct reports or peers need a manager; no reporting loops;
-only admins upload admins. Reporting lines are used only for rows whose role is talent.
+no self-reference; nobody both direct report and peer; one manager per person (a row's manager and another row's
+Direct reports must agree); no reporting loops; only admins upload admins.
 
 **Upload:** accounts first (so rows can refer to each other), then reporting lines. Existing accounts are skipped, or
 updated when *Update people who already have an account* is ticked (never their role). Download *rows with problems*
@@ -314,10 +317,11 @@ privately rather than in a public issue.
 | `request-activation-code`, `activate-account` | Account activation with a 6-digit code | Public (rate-limited) |
 | `forgot-password` | Temporary password by email | Public (rate-limited) |
 | `create-user`, `manage-user` | Add users; roles, access, status, rename | Users edit |
-| `bulk-create-users`, `bulk-link-people` | Excel bulk upload, accounts then reporting lines | Users edit (+ Talents and Assignments edit for links) |
+| `bulk-create-users`, `bulk-link-people` | Excel bulk upload, accounts then reporting lines | Users edit (+ Org structure edit for links and peers) |
 | `resend-invite` | Resend an account invitation | Users or Assignments edit, managers |
 | `create-talent`, `add-existing-talents` | Add talents with managers | Talents edit |
 | `invite-assessor` | Add an assessor to a talent in a cycle | Assignments edit, the talent's managers |
+| `send-cycle-invites` | Email invitations for an open cycle's evaluations now (60 per call) | Admins, Cycles edit |
 | `submit-assessment`, `reopen-assessment` | Submit feedback; reopen by link | The assessor |
 | `send-email`, `send-test-email` | Render, send and log emails | Internal secret; admin |
 | `update-notification-settings`, `unsubscribe` | Email preferences | The person; admin for others |

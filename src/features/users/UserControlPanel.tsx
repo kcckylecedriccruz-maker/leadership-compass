@@ -36,24 +36,21 @@ const BulkUploadDialog = lazy(() => import('@/features/users/BulkUploadDialog').
 
 const ROLE_LABELS: Record<Role, string> = {
   admin: 'Administrator',
-  manager: 'Manager',
-  assessor: 'Assessor',
-  talent: 'Talent',
+  employee: 'Employee',
 };
 
 const ROLE_HELP: Record<Role, string> = {
-  admin: 'Full access to every module, including user control and the audit trail.',
-  manager: 'Sees their team and assigns assessors for the talents they manage.',
-  assessor: 'Completes the feedback forms assigned to them.',
-  talent: 'Completes a self assessment and sees their own report.',
+  admin: 'Full access to every module, all reports, sharing, user control and the audit trail. Can also be assessed.',
+  employee:
+    'Gives feedback and is assessed, including a self-assessment each cycle. Anyone with direct reports in the org structure also gets My team.',
 };
 
 const MODULE_HELP: Record<Module, string> = {
-  dashboard: 'Readiness and reports for every talent',
+  dashboard: 'Readiness and reports for every employee',
   cycles: 'Review rounds, dates and reminders',
-  people: 'Everyone with an account; make people talents',
-  talents: 'Talents, their managers, department and position',
-  assignments: 'Who assesses whom in each cycle',
+  people: 'Everyone with an account',
+  talents: 'Reporting lines, peers and rating exclusions',
+  assignments: 'Who evaluates whom in each cycle (generated plus manual)',
   users: 'Create accounts, roles and status',
   audit: 'Who did what, and when',
   settings: 'Email sender and templates',
@@ -376,7 +373,7 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
       )}
 
       {adding && (
-        <AddUserDialog actorIsAdmin={actorIsAdmin} groups={groups} onClose={() => setAdding(false)} onDone={finished} />
+        <AddUserDialog actorIsAdmin={actorIsAdmin} groups={groups} people={users.filter((u) => u.is_active)} onClose={() => setAdding(false)} onDone={finished} />
       )}
 
       {bulkOpen && (
@@ -512,17 +509,20 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 function AddUserDialog({
   actorIsAdmin,
   groups,
+  people,
   onClose,
   onDone,
 }: {
   actorIsAdmin: boolean;
   groups: UserGroup[];
+  people: ManagedUser[];
   onClose: () => void;
   onDone: (message: string) => void;
 }) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<Role>('assessor');
+  const [role, setRole] = useState<Role>('employee');
+  const [managerId, setManagerId] = useState('');
   const [levels, setLevels] = useState<Record<Module, Level>>(grantsToLevels([]));
   const [sendInvite, setSendInvite] = useState(true);
   const [groupIds, setGroupIds] = useState<string[]>([]);
@@ -545,6 +545,7 @@ function AddUserDialog({
       sendInvite,
       department: department.trim(),
       position: position.trim(),
+      managerId: managerId || null,
     });
     setBusy(false);
     if (!result.ok) return setError(result.message);
@@ -590,6 +591,20 @@ function AddUserDialog({
             <input className="field-input" value={position} maxLength={100} onChange={(event) => setPosition(event.target.value)} />
           </label>
         </div>
+
+        <label className="block space-y-2">
+          <span className="text-sm font-semibold">Immediate manager (optional)</span>
+          <select className="field-input" value={managerId} onChange={(event) => setManagerId(event.target.value)}>
+            <option value="">No manager (top of the org)</option>
+            {people.map((person) => (
+              <option key={person.id} value={person.id}>
+                {person.full_name}
+                {person.position ? ` · ${person.position}` : ''}
+              </option>
+            ))}
+          </select>
+          <span className="block text-xs text-ink-muted">Sets their reporting line in the Org structure. You can change it later.</span>
+        </label>
 
         <RolePicker role={role} onChange={setRole} allowAdmin={actorIsAdmin} />
 

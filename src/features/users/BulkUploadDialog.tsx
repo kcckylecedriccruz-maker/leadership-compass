@@ -8,7 +8,6 @@ import {
   accountRows,
   downloadProblemRows,
   downloadTemplate,
-  effectiveRole,
   isReady,
   linkRows,
   parseUpload,
@@ -104,7 +103,7 @@ export function BulkUploadDialog({
     );
     const succeeded = new Set(created.filter((r) => r.status !== 'failed').map((r) => r.email));
 
-    // Phase 2: managers, direct reports and peers for talents.
+    // Phase 2: reporting lines and peers for everyone.
     const links = canLink ? linkRows(rows, succeeded) : [];
     const linked = links.length
       ? await runInBatches(links, 'Adding reporting lines', bulkLinkPeople, (batch, message) =>
@@ -253,7 +252,6 @@ export function BulkUploadDialog({
 }
 
 function lines(r: ParsedRow): string {
-  if (effectiveRole(r) !== 'talent') return '—';
   const parts = [
     r.manager ? `Manager: ${r.manager}` : null,
     r.directReports.length ? `${r.directReports.length} direct report${r.directReports.length === 1 ? '' : 's'}` : null,

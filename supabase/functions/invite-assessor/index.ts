@@ -142,7 +142,7 @@ async function createAccount(admin: Admin, email: string, fullName: string): Pro
     id: data.user.id,
     full_name: fullName,
     email,
-    role: "assessor",
+    role: "employee",
     must_change_password: true,
   });
   if (profileError) {

@@ -1,17 +1,21 @@
 import type { AssignmentStatus, Classification, CycleStatus } from '@/lib/records';
 
 export const CLASSIFICATION_LABELS: Record<Classification, string> = {
-  immediate_manager: 'Immediate manager',
-  direct_report: 'Direct report',
-  peer: 'Peer',
   self: 'Self',
+  immediate_manager: 'Immediate manager',
+  skip_level_manager: 'Skip-level manager',
+  direct_report: 'Direct report',
+  skip_level_report: 'Skip-level report',
+  peer: 'Peer',
 };
 
 export const CLASSIFICATION_DESCRIPTIONS: Record<Classification, string> = {
-  immediate_manager: 'The talent’s line manager.',
-  direct_report: 'Someone who reports to the talent.',
-  peer: 'A colleague working at a similar level.',
-  self: 'The talent reflects on their own leadership.',
+  self: 'The employee reflects on their own leadership.',
+  immediate_manager: 'The employee’s line manager.',
+  skip_level_manager: 'The manager’s manager.',
+  direct_report: 'Someone who reports to the employee.',
+  skip_level_report: 'Someone two levels below the employee.',
+  peer: 'A colleague who works with the employee.',
 };
 
 export const CYCLE_STATUS_LABELS: Record<CycleStatus, string> = {

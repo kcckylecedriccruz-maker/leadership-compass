@@ -23,6 +23,28 @@ type FormValues = {
   reminderDays: string;
   alertOnSubmit: boolean;
   minGroupSize: string;
+  include: Record<IncludeKey, boolean>;
+};
+
+// Which evaluations this cycle builds from the org structure (all on by default).
+type IncludeKey = 'include_self' | 'include_manager' | 'include_skip_level' | 'include_upward' | 'include_upward_skip' | 'include_peers';
+
+const INCLUDE_OPTIONS: { key: IncludeKey; label: string; help: string }[] = [
+  { key: 'include_self', label: 'Self', help: 'Each employee assesses themselves' },
+  { key: 'include_manager', label: 'Immediate manager', help: 'Managers assess their direct reports' },
+  { key: 'include_skip_level', label: 'Skip-level manager', help: 'The manager’s manager assesses the employee' },
+  { key: 'include_upward', label: 'Upward to manager', help: 'Employees assess their immediate manager' },
+  { key: 'include_upward_skip', label: 'Upward to skip-level', help: 'Employees assess their manager’s manager' },
+  { key: 'include_peers', label: 'Peers', help: 'Approved peers assess the employee' },
+];
+
+const ALL_INCLUDED: Record<IncludeKey, boolean> = {
+  include_self: true,
+  include_manager: true,
+  include_skip_level: true,
+  include_upward: true,
+  include_upward_skip: true,
+  include_peers: true,
 };
 
 type CyclePayload = {
@@ -33,7 +55,7 @@ type CyclePayload = {
   reminder_every_days: number;
   alert_on_submit: boolean;
   min_group_size: number;
-};
+} & Record<IncludeKey, boolean>;
 
 type Validation = { ok: true; payload: CyclePayload } | { ok: false; message: string };
 
@@ -47,6 +69,7 @@ function initialValues(cycle: CycleRecord | null): FormValues {
       reminderDays: '7',
       alertOnSubmit: true,
       minGroupSize: '3',
+      include: { ...ALL_INCLUDED },
     };
   }
   return {
@@ -57,6 +80,14 @@ function initialValues(cycle: CycleRecord | null): FormValues {
     reminderDays: String(cycle.reminder_every_days),
     alertOnSubmit: cycle.alert_on_submit,
     minGroupSize: String(cycle.min_group_size),
+    include: {
+      include_self: cycle.include_self ?? true,
+      include_manager: cycle.include_manager ?? true,
+      include_skip_level: cycle.include_skip_level ?? true,
+      include_upward: cycle.include_upward ?? true,
+      include_upward_skip: cycle.include_upward_skip ?? true,
+      include_peers: cycle.include_peers ?? true,
+    },
   };
 }
 
@@ -84,6 +115,7 @@ function validate(values: FormValues): Validation {
       reminder_every_days: reminderDays,
       alert_on_submit: values.alertOnSubmit,
       min_group_size: minGroupSize,
+      ...values.include,
     },
   };
 }
@@ -160,7 +192,7 @@ export function CycleDialog({ cycle, onClose, onSaved }: CycleDialogProps) {
         </div>
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <FormField id="cycle-status" label="Status" hint="Open makes the feedback forms available to assessors. Closed cycles no longer accept new assessors.">
+          <FormField id="cycle-status" label="Status" hint="Opening creates every evaluation from the org structure and makes the forms available. Closed cycles no longer change.">
             <select
               id="cycle-status"
               className="field-input"
@@ -219,6 +251,29 @@ export function CycleDialog({ cycle, onClose, onSaved }: CycleDialogProps) {
             </label>
           </div>
         </div>
+
+        <fieldset className="space-y-2">
+          <legend className="mb-1 text-sm font-semibold">Evaluations this cycle creates from the org structure</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {INCLUDE_OPTIONS.map((option) => (
+              <label key={option.key} className="flex cursor-pointer items-start gap-3 rounded-xl border border-line p-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 accent-primary"
+                  checked={values.include[option.key]}
+                  onChange={(event) => update('include', { ...values.include, [option.key]: event.target.checked })}
+                />
+                <span>
+                  <span className="block text-sm font-semibold">{option.label}</span>
+                  <span className="block text-xs text-ink-muted">{option.help}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <p className="text-xs text-ink-muted">
+            Evaluations are created when the cycle opens. Changes made later apply after Refresh evaluations on the cycle.
+          </p>
+        </fieldset>
 
         {error && <Notice>{error}</Notice>}
 

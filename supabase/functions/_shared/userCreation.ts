@@ -8,7 +8,7 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import type { Caller, Module } from "./access.ts";
 
-export const ROLES = ["admin", "manager", "assessor", "talent"] as const;
+export const ROLES = ["admin", "employee"] as const;
 export type Role = (typeof ROLES)[number];
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -21,6 +21,8 @@ export type NewUser = {
   sendInvite: boolean;
   department?: string | null;
   position?: string | null;
+  /** Immediate manager in the org structure. */
+  managerId?: string | null;
 };
 
 export type CreateOutcome =
@@ -121,6 +123,7 @@ export async function createOneUser(
     role: input.role,
     department: input.department || null,
     position: input.position || null,
+    manager_id: input.managerId || null,
     // The person sets their own password through the activation code.
     must_change_password: false,
   });

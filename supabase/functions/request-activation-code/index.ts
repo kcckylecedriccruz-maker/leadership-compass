@@ -10,7 +10,7 @@ const corsHeaders = {
 const GENERIC_MESSAGE = "If you've been invited, we've emailed you a 6-digit code.";
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // Every role activates the same way, admins included (admins are created from User control).
-const ACTIVATABLE_ROLES = ["admin", "assessor", "talent", "manager"];
+const ACTIVATABLE_ROLES = ["admin", "employee"];
 const RATE_LIMIT_PER_HOUR = 3;
 const CODE_TTL_MS = 15 * 60 * 1000;
 const HOUR_MS = 60 * 60 * 1000;

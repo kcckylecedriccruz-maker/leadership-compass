@@ -10,7 +10,7 @@ const corsHeaders = {
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CODE_PATTERN = /^[0-9]{6}$/;
 // Every role activates the same way, admins included (admins are created from User control).
-const ACTIVATABLE_ROLES = ["admin", "assessor", "talent", "manager"];
+const ACTIVATABLE_ROLES = ["admin", "employee"];
 const MAX_ATTEMPTS = 5;
 const MIN_PASSWORD_LENGTH = 12;
 const INVALID_CODE_MESSAGE = "That code is not right. Check the email and try again.";

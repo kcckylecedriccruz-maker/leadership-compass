@@ -1,6 +1,9 @@
 import { useCallback, useState } from 'react';
 import { ArrowLeft, Copy, Printer } from 'lucide-react';
+import { useAuth } from '@/auth/useAuth';
 import { Notice } from '@/components/Notice';
+import { IndividualFeedback } from '@/features/reports/IndividualFeedback';
+import { SharePanel } from '@/features/reports/SharePanel';
 import { ReadinessSummary, ScoreTable } from '@/features/reports/ReportScores';
 import { ReportNotes, ReportRecommendations } from '@/features/reports/ReportRecommendations';
 import { buildRecommendations } from '@/features/reports/recommendations';
@@ -14,9 +17,21 @@ type ReportPageProps = {
   onBack: () => void;
 };
 
+type AdminView = 'report' | 'individual' | 'share';
+
+const ADMIN_VIEWS: { id: AdminView; label: string }[] = [
+  { id: 'report', label: 'Consolidated report' },
+  { id: 'individual', label: 'Individual feedback' },
+  { id: 'share', label: 'Share with managers' },
+];
+
 export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
   const load = useCallback(() => loadReportData(cycleId, talentId), [cycleId, talentId]);
   const { state, reload } = useAsyncData(load);
+  const { state: auth } = useAuth();
+  // Only administrators see individual named feedback and can share reports.
+  const isAdmin = auth.status === 'signed_in' && auth.profile.role === 'admin';
+  const [view, setView] = useState<AdminView>('report');
 
   return (
     <div className="space-y-8">
@@ -29,16 +44,41 @@ export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
         Back
       </button>
 
-      {state.status === 'loading' && <p className="text-sm text-ink-muted">Loading report...</p>}
-      {state.status === 'error' && (
-        <Notice>
-          We could not load this report.{' '}
-          <button type="button" onClick={reload} className="font-semibold underline underline-offset-4">
-            Try again
-          </button>
-        </Notice>
+      {isAdmin && (
+        <div role="tablist" aria-label="Report views" className="flex gap-1 overflow-x-auto rounded-2xl bg-muted p-1 print:hidden">
+          {ADMIN_VIEWS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={view === item.id}
+              onClick={() => setView(item.id)}
+              className={`flex-1 whitespace-nowrap rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors ${
+                view === item.id ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
+              }`}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
       )}
-      {state.status === 'ready' && <ReportContent data={state.data} />}
+      {isAdmin && view === 'individual' && <IndividualFeedback cycleId={cycleId} talentId={talentId} />}
+      {isAdmin && view === 'share' && <SharePanel cycleId={cycleId} talentId={talentId} />}
+
+      {(!isAdmin || view === 'report') && (
+        <>
+          {state.status === 'loading' && <p className="text-sm text-ink-muted">Loading report...</p>}
+          {state.status === 'error' && (
+            <Notice>
+              We could not load this report.{' '}
+              <button type="button" onClick={reload} className="font-semibold underline underline-offset-4">
+                Try again
+              </button>
+            </Notice>
+          )}
+          {state.status === 'ready' && <ReportContent data={state.data} />}
+        </>
+      )}
     </div>
   );
 }

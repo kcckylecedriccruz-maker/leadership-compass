@@ -8,9 +8,7 @@ import type { Profile } from '@/lib/types';
 
 const ROLE_LABELS: Record<Profile['role'], string> = {
   admin: 'Admin',
-  manager: 'Manager',
-  assessor: 'Assessor',
-  talent: 'Talent',
+  employee: 'Employee',
 };
 
 export function AppShell({
@@ -27,8 +25,7 @@ export function AppShell({
   const [tourOpen, setTourOpen] = useState(profile.tour_seen_at === null);
   const roleLabel = [
     ROLE_LABELS[profile.role],
-    profile.is_talent && profile.role !== 'talent' ? ROLE_LABELS.talent : null,
-    profile.manages_talents && profile.role !== 'manager' ? 'Manager' : null,
+    profile.manages_talents ? 'Manager' : null,
   ]
     .filter(Boolean)
     .join(' · ');

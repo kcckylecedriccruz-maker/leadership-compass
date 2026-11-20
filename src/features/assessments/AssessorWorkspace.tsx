@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { AssessmentList } from '@/features/assessments/AssessmentList';
 import { AssessmentView } from '@/features/assessments/AssessmentView';
 import { ReopenAssessment } from '@/features/assessments/ReopenAssessment';
+import { MyPeersCard } from '@/features/org/MyPeersCard';
 import type { Profile } from '@/lib/types';
 
 const EDIT_PATH_PATTERN = /^\/edit\/([0-9a-f]{64})\/?$/i;
@@ -26,7 +27,12 @@ export function AssessorWorkspace({ profile }: { profile: Profile }) {
 
   switch (view.kind) {
     case 'list':
-      return <AssessmentList assessorId={profile.id} onOpen={openAssessment} />;
+      return (
+        <div className="space-y-10">
+          <AssessmentList assessorId={profile.id} onOpen={openAssessment} />
+          <MyPeersCard profile={profile} />
+        </div>
+      );
     case 'assessment':
       return <AssessmentView key={view.assignmentId} assignmentId={view.assignmentId} onBack={openList} />;
     case 'reopen':

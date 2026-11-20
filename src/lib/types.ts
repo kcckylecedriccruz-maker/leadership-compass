@@ -1,4 +1,4 @@
-export const ROLES = ['admin', 'manager', 'assessor', 'talent'] as const;
+export const ROLES = ['admin', 'employee'] as const;
 
 export type Role = (typeof ROLES)[number];
 
@@ -31,7 +31,7 @@ export const MODULE_LABELS: Record<Module, string> = {
   dashboard: 'Dashboard',
   cycles: 'Cycles',
   people: 'People',
-  talents: 'Talents',
+  talents: 'Org structure',
   assignments: 'Assignments',
   users: 'Users',
   audit: 'Audit trail',

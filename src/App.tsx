@@ -13,23 +13,22 @@ import { PrivacyPage } from '@/pages/PrivacyPage';
 import { WorkspacePage } from '@/pages/WorkspacePage';
 import { NotificationSettingsPage } from '@/features/notifications/NotificationSettingsPage';
 import { SenderSettingsPage } from '@/features/notifications/SenderSettingsPage';
+import { TeamPage } from '@/features/org/TeamPage';
 import { hasWorkspaceAccess, type Profile } from '@/lib/types';
 
 type HomeView = { label: string; content: ReactNode };
 
 function homeViews(profile: Profile): HomeView[] {
   const views: HomeView[] = [];
-  if (profile.role === 'assessor' || profile.is_talent) {
-    views.push({ label: 'My assessments', content: <AssessorWorkspace profile={profile} /> });
-  }
-  if (profile.role === 'talent' || profile.is_talent) {
-    views.push({ label: 'My report', content: <HomePage profile={profile} /> });
-  }
+  // Everyone is an assessor and is assessed: every person has their evaluations and their own report.
+  views.push({ label: 'My assessments', content: <AssessorWorkspace profile={profile} /> });
+  views.push({ label: 'My report', content: <HomePage profile={profile} /> });
   if (profile.role === 'admin' || hasWorkspaceAccess(profile)) {
     views.push({ label: 'Workspace', content: <WorkspacePage profile={profile} mode="admin" /> });
   }
-  if (profile.role === 'manager' || profile.manages_talents) {
-    views.push({ label: 'My team', content: <WorkspacePage profile={profile} mode="team" /> });
+  // Manager features come from having direct reports in the org structure.
+  if (profile.manages_talents) {
+    views.push({ label: 'My team', content: <TeamPage profile={profile} /> });
   }
   return views;
 }

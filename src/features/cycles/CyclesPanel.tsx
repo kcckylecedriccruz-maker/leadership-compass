@@ -1,11 +1,13 @@
 import { useCallback, useState } from 'react';
-import { AlertTriangle, CalendarDays, Pencil, Plus } from 'lucide-react';
+import { AlertTriangle, CalendarDays, Loader2, Pencil, Plus, RefreshCw, Send } from 'lucide-react';
 import { Badge, type BadgeTone } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
 import { CycleDialog } from '@/features/cycles/CycleDialog';
 import { loadCycles } from '@/features/cycles/cycleQueries';
 import { CYCLE_STATUS_LABELS, formatDate, pluralise } from '@/lib/format';
 import type { CycleRecord, CycleStatus } from '@/lib/records';
+import { callEdgeFunction, isRecord } from '@/lib/edgeFunctions';
+import { databaseErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 import { useAsyncData } from '@/lib/useAsyncData';
 
@@ -62,7 +64,7 @@ export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
         <ul className="space-y-4">
           {state.data.map((cycle) => (
             <li key={cycle.id}>
-              <CycleCard cycle={cycle} onEdit={canEdit ? () => setDialog({ mode: 'edit', cycle }) : undefined} />
+              <CycleCard cycle={cycle} onEdit={canEdit ? () => setDialog({ mode: 'edit', cycle }) : undefined} onChanged={reload} />
             </li>
           ))}
         </ul>
@@ -82,7 +84,7 @@ export function CyclesPanel({ canEdit = true }: { canEdit?: boolean }) {
   );
 }
 
-function CycleCard({ cycle, onEdit }: { cycle: CycleRecord; onEdit?: () => void }) {
+function CycleCard({ cycle, onEdit, onChanged }: { cycle: CycleRecord; onEdit?: () => void; onChanged: () => void }) {
   return (
     <article className="rounded-card border border-line bg-surface p-6 transition-shadow duration-200 hover:shadow-md">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -117,7 +119,8 @@ function CycleCard({ cycle, onEdit }: { cycle: CycleRecord; onEdit?: () => void 
           <dd className="font-semibold">{cycle.min_group_size}</dd>
         </div>
       </dl>
-      {cycle.status !== 'closed' && <CoverageWarning cycleId={cycle.id} />}
+      {cycle.status !== 'closed' && <EvaluationActions cycle={cycle} canEdit={Boolean(onEdit)} onChanged={onChanged} />}
+      {cycle.status === 'open' && <CoverageWarning cycleId={cycle.id} />}
     </article>
   );
 }
@@ -142,7 +145,7 @@ function CoverageWarning({ cycleId }: { cycleId: string }) {
     <div className="mt-5 rounded-2xl border border-band-developing/40 bg-band-developing/10 p-4 text-sm">
       <p className="flex items-center gap-2 font-semibold text-ink">
         <AlertTriangle className="h-4 w-4 shrink-0 text-band-developing" aria-hidden="true" />
-        {pluralise(state.data.length, 'talent')} still missing assessors
+        {pluralise(state.data.length, 'employee')} with no one assigned to evaluate them
       </p>
       <ul className="mt-2 space-y-1 text-ink-muted">
         {state.data.map((gap) => (
@@ -157,4 +160,94 @@ function CoverageWarning({ cycleId }: { cycleId: string }) {
       </p>
     </div>
   );
+}
+
+type GenerationResult = { added: number; removed: number; total: number };
+
+/**
+ * Evaluations come from the org structure: created when the cycle opens, and again on Refresh
+ * (adds what is missing, removes automatic ones that have not started). Invitations can be sent
+ * straight away instead of waiting for the daily reminder run.
+ */
+function EvaluationActions({ cycle, canEdit, onChanged }: { cycle: CycleRecord; canEdit: boolean; onChanged: () => void }) {
+  const loadCount = useCallback(async () => {
+    const { count } = await supabase.from('assignments').select('id', { count: 'exact', head: true }).eq('cycle_id', cycle.id);
+    return count ?? 0;
+  }, [cycle.id]);
+  const { state, reload } = useAsyncData(loadCount);
+  const [busy, setBusy] = useState<'refresh' | 'invite' | null>(null);
+  const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
+
+  async function refresh() {
+    setBusy('refresh');
+    setMessage(null);
+    const { data, error } = await supabase.rpc('generate_cycle_evaluations', { p_cycle_id: cycle.id });
+    setBusy(null);
+    if (error) {
+      setMessage({ tone: 'error', text: databaseErrorMessage(error) });
+      return;
+    }
+    const result = data as GenerationResult;
+    setMessage({ tone: 'info', text: `${result.added} added, ${result.removed} removed; ${result.total} evaluations in this cycle.` });
+    reload();
+    onChanged();
+  }
+
+  async function sendInvites() {
+    setBusy('invite');
+    setMessage(null);
+    let sent = 0;
+    let failed = 0;
+    // The server sends in batches; keep going until nothing is left.
+    for (let round = 0; round < 50; round += 1) {
+      const result = await callEdgeFunction('send-cycle-invites', { cycle_id: cycle.id }, isInviteResult);
+      if (!result.ok) {
+        setBusy(null);
+        setMessage({ tone: 'error', text: result.message });
+        return;
+      }
+      sent += result.data.sent;
+      failed += result.data.failed;
+      if (result.data.remaining === 0 || result.data.sent + result.data.failed === 0) break;
+    }
+    setBusy(null);
+    setMessage({
+      tone: failed > 0 ? 'error' : 'info',
+      text: sent + failed === 0 ? 'Everyone has already been invited.' : `${sent} invitation${sent === 1 ? '' : 's'} sent${failed ? `, ${failed} failed` : ''}.`,
+    });
+  }
+
+  return (
+    <div className="mt-5 space-y-3 border-t border-line pt-5">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-ink-muted">
+          <span className="font-semibold text-ink">{state.status === 'ready' ? state.data : '–'} evaluations</span>
+          {cycle.evaluations_generated_at
+            ? ` · built from the org structure ${formatDate(cycle.evaluations_generated_at)}`
+            : cycle.status === 'draft'
+              ? ' · created from the org structure when the cycle opens'
+              : ''}
+        </p>
+        {canEdit && (
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className="btn-secondary px-3 py-2" onClick={() => void refresh()} disabled={busy !== null}>
+              {busy === 'refresh' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RefreshCw className="h-4 w-4" aria-hidden="true" />}
+              {cycle.status === 'draft' ? 'Build evaluations now' : 'Refresh evaluations'}
+            </button>
+            {cycle.status === 'open' && (
+              <button type="button" className="btn-secondary px-3 py-2" onClick={() => void sendInvites()} disabled={busy !== null}>
+                {busy === 'invite' ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}
+                Send invitations now
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+    </div>
+  );
+}
+
+function isInviteResult(value: unknown): value is { sent: number; failed: number; remaining: number } {
+  return isRecord(value) && typeof value.sent === 'number' && typeof value.remaining === 'number';
 }

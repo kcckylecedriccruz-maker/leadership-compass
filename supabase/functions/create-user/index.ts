@@ -46,6 +46,7 @@ function parse(body: unknown): NewUser | string {
     sendInvite: b.sendInvite !== false,
     department: short(b.department) || null,
     position: short(b.position) || null,
+    managerId: typeof b.managerId === "string" && /^[0-9a-f-]{36}$/i.test(b.managerId) ? b.managerId : null,
   };
 }
 

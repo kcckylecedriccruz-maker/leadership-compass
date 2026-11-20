@@ -117,6 +117,7 @@ export type CreateUserInput = {
   sendInvite: boolean;
   department?: string;
   position?: string;
+  managerId?: string | null;
 };
 
 function isCreatedPayload(value: unknown): value is { status: string; id: string; inviteSent: boolean } {

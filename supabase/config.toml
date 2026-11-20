@@ -63,3 +63,6 @@ verify_jwt = true
 
 [functions.bulk-link-people]
 verify_jwt = true
+
+[functions.send-cycle-invites]
+verify_jwt = true

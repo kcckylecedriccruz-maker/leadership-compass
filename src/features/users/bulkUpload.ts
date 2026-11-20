@@ -69,12 +69,15 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLE_ALIASES: Record<string, Role> = {
   admin: 'admin',
   administrator: 'admin',
-  manager: 'manager',
-  'line manager': 'manager',
-  assessor: 'assessor',
-  rater: 'assessor',
-  talent: 'talent',
-  leader: 'talent',
+  employee: 'employee',
+  staff: 'employee',
+  // Older templates used these words; everyone is now an employee.
+  manager: 'employee',
+  'line manager': 'employee',
+  assessor: 'employee',
+  rater: 'employee',
+  talent: 'employee',
+  leader: 'employee',
 };
 
 function normaliseHeader(value: string): string {
@@ -108,7 +111,7 @@ function inSheetChecks() {
   const C = letter('role');
   const F = letter('manager');
   const J = letter('sendInvite');
-  const roleCheck = ['admin', 'administrator', 'manager', 'assessor', 'talent']
+  const roleCheck = ['admin', 'administrator', 'employee', 'manager', 'assessor', 'talent']
     .map((role) => `LOWER(TRIM($${C}2))<>"${role}"`)
     .join(',');
   return [
@@ -134,11 +137,11 @@ function inSheetChecks() {
 }
 
 const EXAMPLES: string[][] = [
-  ['Juan Dela Cruz', `juan.delacruz${EXAMPLE_DOMAIN}`, 'manager', 'Sales', 'Sales Manager', '', '', '', 'Sales Team', 'Yes'],
+  ['Juan Dela Cruz', `juan.delacruz${EXAMPLE_DOMAIN}`, 'employee', 'Sales', 'Sales Manager', '', '', '', 'Sales Team', 'Yes'],
   [
     'Maria Santos',
     `maria.santos${EXAMPLE_DOMAIN}`,
-    'talent',
+    'employee',
     'Sales',
     'Team Lead',
     `juan.delacruz${EXAMPLE_DOMAIN}`,
@@ -147,9 +150,9 @@ const EXAMPLES: string[][] = [
     'Batch 1, Sales Team',
     'Yes',
   ],
-  ['Pedro Reyes', `pedro.reyes${EXAMPLE_DOMAIN}`, 'assessor', 'Sales', 'Sales Associate', '', '', '', 'Sales Team', 'Yes'],
-  ['Liza Gomez', `liza.gomez${EXAMPLE_DOMAIN}`, 'assessor', 'Sales', 'Sales Associate', '', '', '', '', 'No'],
-  ['Ana Lim', `ana.lim${EXAMPLE_DOMAIN}`, 'assessor', 'Marketing', 'Team Lead', '', '', '', '', 'Yes'],
+  ['Pedro Reyes', `pedro.reyes${EXAMPLE_DOMAIN}`, 'employee', 'Sales', 'Sales Associate', '', '', '', 'Sales Team', 'Yes'],
+  ['Liza Gomez', `liza.gomez${EXAMPLE_DOMAIN}`, 'employee', 'Sales', 'Sales Associate', '', '', '', '', 'No'],
+  ['Ana Lim', `ana.lim${EXAMPLE_DOMAIN}`, 'employee', 'Marketing', 'Team Lead', '', '', '', '', 'Yes'],
 ];
 
 /** Builds the bulk-upload template workbook, listing the groups that already exist. */
@@ -160,20 +163,20 @@ export function templateBlob(existingGroups: string[]): Promise<Blob> {
   const help: [string, string, string][] = [
     ['Full name', 'Yes', 'First and last name as it should appear in the app.'],
     ['Email', 'Yes', 'Work email; it is the person’s sign-in. Each email only once in the file.'],
-    ['Role', 'Yes', `One of: ${ROLES.join(', ')}. Only administrators can upload administrators.`],
+    ['Role', 'Yes', `One of: ${ROLES.join(', ')}. Everyone is an employee who gives and receives feedback; only administrators can upload administrators.`],
     ['Department', 'No', 'Saved for everyone, up to 100 characters.'],
     ['Position', 'No', 'Job title, saved for everyone, up to 100 characters.'],
     [
       'Immediate manager',
-      'For talents',
-      'Email of the line manager. Used when Role is talent: the person is set up for assessment and the manager gives Immediate-manager feedback. The manager must already have an account or be a row in this file.',
+      'No',
+      'Email of the person they report to. Skip-level managers come automatically (the manager’s manager). The manager must already have an account or be a row in this file.',
     ],
     [
       'Direct reports',
       'No',
-      'Emails of people who report to this talent, separated by commas. They give Direct-report feedback in every draft or open cycle.',
+      'Emails of people who report to this person, separated by commas. Their immediate manager becomes this person.',
     ],
-    ['Peers', 'No', 'Emails of colleagues at a similar level, separated by commas. They give Peer feedback.'],
+    ['Peers', 'No', 'Emails of colleagues who should give this person Peer feedback, separated by commas. Added as approved peers; no minimum or maximum.'],
     ['Groups', 'No', 'Group names separated by commas. Groups that do not exist yet are created.'],
     ['Send invite', 'No', 'Yes or No. Blank means Yes: the person gets an email to set their own password.'],
   ];
@@ -187,7 +190,8 @@ export function templateBlob(existingGroups: string[]): Promise<Blob> {
     [{ value: 'Good to know', fontWeight: 'bold' as const }],
     ['•', '', 'Cells turn red when something looks wrong (missing name, bad or repeated email, unknown role).'],
     ['•', '', 'People can refer to each other anywhere in the file; accounts are created first, then reporting lines.'],
-    ['•', '', 'Reporting lines (manager, direct reports, peers) are only set up for rows whose Role is talent.'],
+    ['•', '', 'Reporting lines are set for everyone. A person’s manager can come from their own row or from someone else’s Direct reports column; the two must agree.'],
+    ['•', '', 'Rating exclusions (exclude from rating others, being rated, or self) are set in the Org structure module.'],
     ['•', '', 'People who already have an account are skipped, unless you tick "Update people who already have an account".'],
     ['•', '', 'Delete the example rows (emails ending in @example.com); they are ignored anyway.'],
     ['•', '', `Up to ${MAX_UPLOAD_ROWS} people per file. Save as .xlsx.`],
@@ -405,23 +409,12 @@ export async function parseUpload(file: File, options: ParseOptions): Promise<Pa
 
   for (const r of rows) {
     if (r.skipReason) continue;
-    const isTalent = effectiveRole(r) === 'talent';
-    const hasLines = Boolean(r.manager) || r.directReports.length > 0 || r.peers.length > 0;
-    if (!isTalent) {
-      if (hasLines) r.warnings.push('Manager, direct reports and peers are only used when Role is talent; they will be ignored.');
-      continue;
-    }
     if (r.manager) {
       if (!EMAIL_PATTERN.test(r.manager)) r.errors.push('Immediate manager email is not valid.');
       else if (r.manager === r.email) r.errors.push('A person cannot be their own immediate manager.');
       else {
         const problem = describe(r.manager);
         if (problem) r.errors.push(`Immediate manager: ${problem}`);
-      }
-    } else if (!r.existing) {
-      r.warnings.push('No immediate manager: the account is created, but assessment is set up only once a manager is added.');
-      if (r.directReports.length + r.peers.length > 0) {
-        r.errors.push('Direct reports and peers need an immediate manager on the same row.');
       }
     }
     for (const [list, label] of [
@@ -430,7 +423,7 @@ export async function parseUpload(file: File, options: ParseOptions): Promise<Pa
     ] as const) {
       for (const email of list) {
         if (!EMAIL_PATTERN.test(email)) r.errors.push(`${label} "${email}" is not a valid email.`);
-        else if (email === r.email) r.errors.push(`${label}: a person cannot assess themselves.`);
+        else if (email === r.email) r.errors.push(`${label}: a person cannot be listed against themselves.`);
         else if (email === r.manager) r.errors.push(`${label} ${email} is already the immediate manager.`);
         else {
           const problem = describe(email);
@@ -442,11 +435,33 @@ export async function parseUpload(file: File, options: ParseOptions): Promise<Pa
     if (both.length > 0) r.errors.push(`${both.join(', ')} is listed as both direct report and peer.`);
   }
 
+  // Combine both ways of stating a reporting line: "my manager is X" and "X's direct reports include me".
+  const active = rows.filter((r) => !r.skipReason && r.email);
+  const managerOf = new Map<string, string>();
+  const claimedBy = new Map<string, string>();
+  for (const r of active) {
+    if (r.manager && r.manager !== r.email) managerOf.set(r.email, r.manager);
+  }
+  for (const r of active) {
+    for (const report of r.directReports) {
+      if (report === r.email) continue;
+      const earlier = claimedBy.get(report);
+      if (earlier && earlier !== r.email) {
+        r.errors.push(`${report} is also listed as a direct report of ${earlier}; a person has one immediate manager.`);
+        continue;
+      }
+      claimedBy.set(report, r.email);
+      const stated = managerOf.get(report);
+      if (stated && stated !== r.email) {
+        r.errors.push(`${report} lists ${stated} as their immediate manager, not this person.`);
+      } else if (!stated) {
+        managerOf.set(report, r.email);
+      }
+    }
+  }
+
   // A reporting loop (A reports to B, B reports to A) is almost always a typo.
-  const managerOf = new Map(
-    rows.filter((r) => effectiveRole(r) === 'talent' && r.manager && r.manager !== r.email && !r.skipReason).map((r) => [r.email, r.manager]),
-  );
-  for (const r of rows) {
+  for (const r of active) {
     if (!managerOf.has(r.email)) continue;
     const path = [r.email];
     let next = managerOf.get(r.email);
@@ -484,10 +499,10 @@ export function accountRows(rows: ParsedRow[]): BulkRow[] {
   }));
 }
 
-/** Phase 2 rows: reporting lines for talents. */
+/** Phase 2 rows: reporting lines and peers, for everyone. */
 export function linkRows(rows: ParsedRow[], succeeded: Set<string>): BulkLinkRow[] {
   return rows
-    .filter((r) => isReady(r) && effectiveRole(r) === 'talent' && succeeded.has(r.email))
+    .filter((r) => isReady(r) && succeeded.has(r.email))
     .filter((r) => r.manager || r.directReports.length > 0 || r.peers.length > 0)
     .map((r) => ({
       row: r.row,

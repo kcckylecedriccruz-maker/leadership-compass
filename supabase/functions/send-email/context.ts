@@ -26,7 +26,7 @@ type AssignmentRow = {
   id: string;
   cycle_id: string;
   talent_id: string;
-  classification: "immediate_manager" | "direct_report" | "peer" | "self";
+  classification: "immediate_manager" | "skip_level_manager" | "direct_report" | "skip_level_report" | "peer" | "self";
   status: string;
   copy_requested: boolean;
   cycles: { name: string; closes_at: string; status: string; alert_on_submit: boolean };
@@ -67,6 +67,7 @@ function daysUntil(iso: string): number {
 
 function assessorLabel(classification: AssignmentRow["classification"]): string | null {
   if (classification === "immediate_manager") return "Immediate manager";
+  if (classification === "skip_level_manager") return "Skip-level manager";
   if (classification === "self") return "Self";
   return null;
 }

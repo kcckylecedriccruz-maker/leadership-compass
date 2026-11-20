@@ -65,7 +65,7 @@ the signed-in user's access token and returns { ok, data } or { ok: false, messa
 Create the core schema in one migration, with row-level security on every table and no access for anon.
 
 Tables:
-- profiles: id (= auth.users.id), full_name, email (unique), role (admin | manager | assessor | talent),
+- profiles: id (= auth.users.id), full_name, email (unique), role (admin | employee; see Prompt 13 for the org model),
   must_change_password bool default true, temp_password_expires_at, tour_seen_at, activated_at,
   is_active bool default true, deactivated_at, deactivated_by, department text (<=100), position text (<=100).
 - talents: id, profile_id (unique), department, position, immediate_manager_id (mirrors the primary manager).
@@ -349,9 +349,9 @@ Parsing and checks (in the browser, before anything is sent):
 - Per row: required name, valid unique email, role (accepts Administrator, Leader, Rater, ...), lengths <= 100
   for department/position/group names, <= 20 groups, Send invite Yes/No (blank = Yes); only admins upload admins.
 - Between rows: manager, direct reports and peers must be in the file or already have an account; no
-  self-reference; nobody both direct report and peer; direct reports or peers need a manager on the same row;
-  detect reporting loops (A -> B -> A). Reporting lines apply only when the person's role is talent (existing
-  accounts keep their current role); on other rows show a note that they are ignored.
+  self-reference; nobody both direct report and peer;
+  one manager per person (a row's manager and another row's Direct reports must agree); detect reporting
+  loops across both. Reporting lines apply to every row.
 - Existing accounts are skipped, or updated when "Update people who already have an account" is ticked (name,
   department, position, groups, reporting lines; never the role).
 Preview table: Row, Person, Role, Department · Position, Reporting lines, Groups, Check (Ready / problem /
@@ -360,13 +360,44 @@ skipped / notes), with "Download rows with problems" (Excel with a Problems colu
 Upload in two phases, 25 rows per request, with a progress bar:
 1. Edge function bulk-create-users (Users edit): create or update each account with the shared createOneUser /
    updateExistingUser, create missing groups, send invites, audit "user.bulk_upload".
-2. Edge function bulk-link-people (Users, Talents and Assignments edit): for talents, add the manager (making the
-   person a talent with self and manager assessments, or adding a manager to an existing talent) and add direct
-   reports and peers as assessors in every draft or open cycle; send feedback invites now for open cycles only.
+2. Edge function bulk-link-people (Users and Org structure edit): set profiles.manager_id for the row, set the
+   manager of each listed direct report to this row, and add peers with rpc assign_peer (approved).
 Results: created / updated / skipped / failed per row with reasons, downloadable as Excel.
 ```
 
-**Check:** upload the template with two real rows (a talent whose manager is the other row) and see both created and linked.
+**Check:** upload the template with two real rows (one person whose manager is the other row) and see both created and linked.
+
+---
+
+## Prompt 13: Org structure and evaluation model
+
+This replaces the older Manager / Assessor / Talent roles. Paste:
+
+```
+Change the people model. Everyone is an employee who is assessed and gives feedback.
+- Roles: only 'admin' and 'employee' (migrate manager/assessor/talent to employee). 'Manager' is derived: a person
+  with direct reports. The 'talents' module is labelled "Org structure".
+- profiles: manager_id (self-reference, loop guard trigger), exclude_rated, exclude_rater, exclude_self. Every
+  profile gets a talents row automatically; mirror manager_id into talent_managers for compatibility. Changing
+  manager_id or exclusions needs can_edit('talents').
+- Relationship kinds: self, immediate_manager, skip_level_manager (manager's manager, automatic), direct_report,
+  skip_level_report, peer. assignments.origin auto | peer | manual.
+- peer_relationships(subject, peer, status suggested|approved|declined) with RPCs suggest_peer (the employee),
+  decide_peer (immediate manager or admin), assign_peer and remove_peer (admin or manager). No minimum or maximum.
+- cycles: include_self, include_manager, include_skip_level, include_upward, include_upward_skip, include_peers,
+  evaluations_generated_at. generate_cycle_evaluations(cycle) builds the evaluations from the org structure
+  (respecting exclusions) as a snapshot when the cycle opens; admins can refresh. Refresh only removes auto/peer
+  rows that are not started. Edge function send-cycle-invites sends invitations now (60 per call).
+- Reports: admin-only by default; admins see Individual feedback (managers named, others anonymous) and can share
+  the consolidated or individual report with the immediate or skip-level manager (report_shares). Employees see
+  their own report after the cycle closes.
+- UI: Workspace > Org structure (tree, manager select, department, position, exclusions, peers); My team for
+  people with direct reports (approve peers, shared reports); My peers card under My assessments; cycle dialog
+  switches; Build / Refresh evaluations and Send invitations now on each cycle.
+```
+
+**Check:** open a cycle and see a self-assessment for everyone plus manager, skip-level, upward and peer evaluations
+matching the org chart.
 
 ---
 

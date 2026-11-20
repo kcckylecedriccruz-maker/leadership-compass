@@ -83,12 +83,12 @@ Deno.serve(async (req) => {
     const role = (profile as { role: string }).role;
     const adminOnlyTypes = new Set(["submitted_alert", "dashboard_ready"]);
     const memberTypes = new Set(["submission_confirmation", "cycle_closed", "reminder"]);
-    if (adminOnlyTypes.has(emailType) && role !== "admin" && role !== "manager") {
+    const { count: reports } = await admin.from("profiles").select("id", { count: "exact", head: true }).eq("manager_id", profileId);
+    if (adminOnlyTypes.has(emailType) && role !== "admin" && (reports ?? 0) === 0) {
       return html(page("Link not recognised", "This email type is not available for your account."));
     }
-    if (memberTypes.has(emailType) && role === "admin") {
-      return html(page("Link not recognised", "This email type is not available for your account."));
-    }
+    // Administrators can be assessors too, so member emails apply to everyone.
+    void memberTypes;
 
     const { error } = await admin.from("notification_preferences").upsert(
       { profile_id: profileId, email_type: emailType, enabled: false, delivery: "instant", updated_at: new Date().toISOString() },

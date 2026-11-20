@@ -56,10 +56,8 @@ export const LOCKED_EMAIL_TYPES = [
 ] as const;
 
 export function relevantEmailTypes(role: Role, managesTalents: boolean, isTalent: boolean): EmailTypeMeta[] {
-  if (role === 'admin') return EMAIL_TYPES.filter((item) => item.audience === 'admin');
-  if (role === 'manager' || managesTalents) {
-    return EMAIL_TYPES.filter((item) => item.audience === 'admin');
-  }
+  // Everyone is an assessor, so everyone gets the member emails; admins and managers also get the oversight ones.
+  if (role === 'admin' || managesTalents) return [...EMAIL_TYPES];
   void isTalent;
   return EMAIL_TYPES.filter((item) => item.audience === 'member');
 }

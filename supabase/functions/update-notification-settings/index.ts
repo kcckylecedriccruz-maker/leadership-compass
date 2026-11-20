@@ -99,16 +99,15 @@ export async function handleUpsert(req: Request): Promise<Response> {
     }
 
     const isAdmin = role === "admin";
-    const isManagerish = isAdmin || role === "manager";
+    // Managers are people with direct reports in the org structure.
+    const { count: reports } = await supabase.from("profiles").select("id", { count: "exact", head: true }).eq("manager_id", userId);
+    const isManagerish = isAdmin || (reports ?? 0) > 0;
     if (ADMIN_TYPES.has(emailType)) {
       if (!isManagerish) {
         return json({ error: "This email type is only available to administrators and managers." }, 403);
       }
-    } else if (ASSESSOR_TYPES.has(emailType)) {
-      if (isAdmin) {
-        return json({ error: "Administrators do not receive this email type." }, 403);
-      }
-    } else {
+    } else if (!ASSESSOR_TYPES.has(emailType)) {
+      // Everyone, administrators included, can be an assessor, so assessor emails apply to all.
       return json({ error: "Unknown email type." }, 400);
     }
 

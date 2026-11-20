@@ -94,6 +94,7 @@ export function AssignmentList({ cycle, talent, assignments, people, isAdmin, ca
           cycle={cycle}
           talent={talent}
           people={people}
+          assignedIds={new Set(assignments.map((a) => a.assessor?.id).filter((id): id is string => Boolean(id)))}
           onAdded={onChanged}
           onClose={() => setAdding(false)}
         />

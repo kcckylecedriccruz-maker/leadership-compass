@@ -4,6 +4,7 @@ import { FormField } from '@/components/FormField';
 import { Modal } from '@/components/Modal';
 import { Notice } from '@/components/Notice';
 import { inviteAssessor, type InviteAssessorResult } from '@/features/assignments/assignmentFunctions';
+import { EmployeePicker, type PickerValue } from '@/features/assignments/EmployeePicker';
 import { CLASSIFICATION_DESCRIPTIONS, CLASSIFICATION_LABELS } from '@/lib/format';
 import { CLASSIFICATIONS, type Classification, type CycleRecord, type ProfileRef, type TalentRecord } from '@/lib/records';
 import { isValidEmail } from '@/lib/validation';
@@ -11,7 +12,10 @@ import { isValidEmail } from '@/lib/validation';
 type AddAssessorDialogProps = {
   cycle: CycleRecord;
   talent: TalentRecord;
-  people: ProfileRef[];
+  /** Kept for callers; the employee list now loads in the picker. */
+  people?: ProfileRef[];
+  /** People already evaluating this person in this cycle (hidden from the list). */
+  assignedIds?: Set<string>;
   onAdded: () => void;
   onClose: () => void;
 };
@@ -19,8 +23,9 @@ type AddAssessorDialogProps = {
 // Everyone except Self and Immediate manager is chosen by email.
 const PERSON_TYPES: readonly Classification[] = ['skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'];
 
-export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: AddAssessorDialogProps) {
+export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), onAdded, onClose }: AddAssessorDialogProps) {
   const [classification, setClassification] = useState<Classification | null>(null);
+  const [picked, setPicked] = useState<PickerValue>(null);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
   const [organisation, setOrganisation] = useState('');
@@ -30,6 +35,8 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
 
   const needsEmail = classification !== null && PERSON_TYPES.includes(classification);
   const isExternal = classification === 'external';
+  // Employees are picked from the list; only external raters and "Someone new" are typed in.
+  const typesDetails = needsEmail && (isExternal || picked?.kind === 'new');
 
   function describe(option: Classification): string {
     if (option === 'immediate_manager') {
@@ -45,8 +52,16 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
       setError('Choose the type of assessor first.');
       return;
     }
-    if (needsEmail && !isValidEmail(email)) {
+    if (needsEmail && !isExternal && !picked) {
+      setError('Choose an employee from the list, or select Someone new.');
+      return;
+    }
+    if (typesDetails && !isValidEmail(email)) {
       setError('Enter a valid email address for this person.');
+      return;
+    }
+    if (typesDetails && !name.trim()) {
+      setError('Enter their full name.');
       return;
     }
 
@@ -56,8 +71,8 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
       cycle_id: cycle.id,
       talent_id: talent.id,
       classification,
-      assessor_email: needsEmail ? email.trim() : null,
-      assessor_name: needsEmail && name.trim() ? name.trim() : null,
+      assessor_email: !needsEmail ? null : picked?.kind === 'existing' && !isExternal ? picked.employee.email : email.trim(),
+      assessor_name: typesDetails && name.trim() ? name.trim() : null,
       organisation: isExternal && organisation.trim() ? organisation.trim() : null,
     });
     setSaving(false);
@@ -110,7 +125,10 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
                     value={option}
                     checked={checked}
                     disabled={disabled}
-                    onChange={() => setClassification(option)}
+                    onChange={() => {
+                      setClassification(option);
+                      setError(null);
+                    }}
                     className="mt-1 h-4 w-4 accent-primary"
                   />
                   <span className="min-w-0 space-y-1">
@@ -122,7 +140,23 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
             })}
           </fieldset>
 
-          {needsEmail && (
+          {needsEmail && !isExternal && classification && (
+            <div className="space-y-2">
+              <p className="text-sm font-semibold">Employee</p>
+              <EmployeePicker
+                subjectProfileId={talent.profile_id}
+                excludeIds={assignedIds}
+                kind={classification}
+                value={picked}
+                onChange={(value) => {
+                  setPicked(value);
+                  setError(null);
+                }}
+              />
+            </div>
+          )}
+
+          {typesDetails && (
             <div className="grid gap-5 sm:grid-cols-2">
               <FormField
                 id="assessor-email"
@@ -130,20 +164,19 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
                 hint={
                   isExternal
                     ? 'They never get an account; they answer by secure email link.'
-                    : 'Use the email of an existing person to link them.'
+                    : 'Their work email. They answer by secure link until they activate an account.'
                 }
               >
                 <input
                   id="assessor-email"
                   type="email"
                   autoComplete="off"
-                  list={isExternal ? undefined : 'known-people'}
                   className="field-input"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                 />
               </FormField>
-              <FormField id="assessor-name" label="Full name" hint={isExternal ? 'Needed for someone not added before.' : 'Needed only for someone new.'}>
+              <FormField id="assessor-name" label="Full name" hint={isExternal ? 'Needed for someone not added before.' : 'As it should appear in the app.'}>
                 <input
                   id="assessor-name"
                   className="field-input"
@@ -163,13 +196,6 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
                   />
                 </FormField>
               )}
-              <datalist id="known-people">
-                {people.map((person) => (
-                  <option key={person.id} value={person.email}>
-                    {person.full_name}
-                  </option>
-                ))}
-              </datalist>
             </div>
           )}
 

@@ -1,11 +1,12 @@
 import { useCallback, useState } from 'react';
-import { AlertTriangle, CalendarDays, Loader2, Pencil, Plus, RefreshCw, Send } from 'lucide-react';
+import { AlertTriangle, CalendarDays, ClipboardCheck, Loader2, Pencil, Plus, RefreshCw, Send } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { Badge, type BadgeTone } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
 import { CycleDangerActions } from '@/features/cycles/CycleDangerActions';
 import { CycleDialog } from '@/features/cycles/CycleDialog';
 import { FeedbackLinks } from '@/features/cycles/FeedbackLinks';
+import { ReviewStatusDialog } from '@/features/cycles/ReviewStatus';
 import { loadCycles } from '@/features/cycles/cycleQueries';
 import { CYCLE_STATUS_LABELS, formatDate, pluralise } from '@/lib/format';
 import type { CycleRecord, CycleStatus } from '@/lib/records';
@@ -119,8 +120,10 @@ function CycleCard({
   onChanged: () => void;
   danger?: React.ReactNode;
 }) {
+  const [statusOpen, setStatusOpen] = useState(false);
   return (
     <article className="rounded-card border border-line bg-surface p-6 transition-shadow duration-200 hover:shadow-md">
+      {statusOpen && <ReviewStatusDialog cycle={cycle} onClose={() => setStatusOpen(false)} />}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-3">
@@ -134,6 +137,12 @@ function CycleCard({
         </div>
         {(onEdit || danger) && (
           <div className="flex flex-wrap gap-2">
+            {cycle.status !== 'draft' && danger && (
+              <button type="button" onClick={() => setStatusOpen(true)} className="btn-secondary">
+                <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+                Review status
+              </button>
+            )}
             {onEdit && (
               <button type="button" onClick={onEdit} className="btn-secondary">
                 <Pencil className="h-4 w-4" aria-hidden="true" />

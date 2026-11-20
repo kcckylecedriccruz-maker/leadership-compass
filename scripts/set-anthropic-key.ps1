@@ -14,8 +14,15 @@ if ($plain -notmatch '^sk-ant-') { throw 'That does not look like an Anthropic A
 $tmp = [IO.Path]::GetTempFileName()
 try {
   Set-Content -Path $tmp -Encoding ascii -Value @("ANTHROPIC_API_KEY=$plain")
-  cmd /c "`"$npx`" -y supabase secrets set --env-file `"$tmp`" --remote=$ref --yes 2>&1" | Where-Object { $_ -match 'Finished|rror' }
+  # A private npm cache avoids failures from a damaged shared npm cache.
+  $env:npm_config_cache = Join-Path $env:TEMP 'leadership-compass-npm-cache'
+  $output = cmd /c "`"$npx`" -y supabase secrets set --env-file `"$tmp`" --remote=$ref --yes 2>&1"
+  $code = $LASTEXITCODE
 } finally {
   Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+}
+if ($code -ne 0) {
+  $output | Select-Object -Last 8 | ForEach-Object { Write-Host $_ }
+  throw "The key was NOT saved (exit code $code). Run the script again; if it keeps failing, run: npm cache verify"
 }
 Write-Host 'Saved. The AI features can be used straight away.'

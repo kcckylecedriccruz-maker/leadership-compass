@@ -7,6 +7,7 @@ export const CLASSIFICATION_LABELS: Record<Classification, string> = {
   direct_report: 'Direct report',
   skip_level_report: 'Skip-level report',
   peer: 'Peer',
+  external: 'External',
 };
 
 export const CLASSIFICATION_DESCRIPTIONS: Record<Classification, string> = {
@@ -16,6 +17,7 @@ export const CLASSIFICATION_DESCRIPTIONS: Record<Classification, string> = {
   direct_report: 'Someone who reports to the employee.',
   skip_level_report: 'Someone two levels below the employee.',
   peer: 'A colleague who works with the employee.',
+  external: 'Someone outside the company, such as a client or partner.',
 };
 
 export const CYCLE_STATUS_LABELS: Record<CycleStatus, string> = {

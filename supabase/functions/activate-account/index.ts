@@ -60,11 +60,11 @@ async function checkCode(admin: SupabaseClient, email: string, code: string): Pr
 async function activate(admin: SupabaseClient, email: string, password: string): Promise<Outcome> {
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, role, activated_at")
+    .select("id, role, activated_at, person_type")
     .eq("email", email)
     .maybeSingle();
   if (profileError) throw new Error(`Could not load the profile: ${profileError.message}`);
-  if (!profile || profile.activated_at !== null || !ACTIVATABLE_ROLES.includes(profile.role)) {
+  if (!profile || profile.person_type === "external" || profile.activated_at !== null || !ACTIVATABLE_ROLES.includes(profile.role)) {
     return { status: 400, body: { error: EXPIRED_CODE_MESSAGE } };
   }
 

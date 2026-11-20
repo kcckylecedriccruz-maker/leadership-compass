@@ -22,7 +22,10 @@ import {
   missingItemNumbers,
   saveAssessmentDraft,
   submitAssessment,
+  type ActionResult,
 } from '@/features/assessments/assessmentActions';
+import type { SubmitItem } from '@/features/assessments/assessmentModel';
+import type { FunctionResult } from '@/lib/edgeFunctions';
 import { ASSIGNMENT_STATUS_LABELS, daysLeftLabel } from '@/lib/format';
 import type { AssignmentStatus } from '@/lib/records';
 
@@ -40,13 +43,29 @@ type Step = 'edit' | 'review';
 
 const EMPTY_ANSWER: Answer = { rating: null, note: '' };
 
+/** How the form saves and submits: signed in (default) or through a secure link. */
+export type FormActions = {
+  save: (items: SubmitItem[]) => Promise<ActionResult>;
+  clear: () => Promise<ActionResult>;
+  submit: (copyRequested: boolean, items: SubmitItem[]) => Promise<FunctionResult<unknown>>;
+  /** Link users change a submitted form here instead of using the emailed edit link. */
+  reopen?: () => Promise<ActionResult>;
+};
+
 type AssessmentFormProps = {
   detail: AssessmentDetail;
   onBack: () => void;
+  actions?: FormActions;
+  backLabel?: string;
 };
 
-export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
+export function AssessmentForm({ detail, onBack, actions, backLabel = 'Back to my assessments' }: AssessmentFormProps) {
   const { summary, competencies } = detail;
+  const act: FormActions = actions ?? {
+    save: (items) => saveAssessmentDraft(summary.id, items),
+    clear: () => clearAssessmentDraft(summary.id),
+    submit: (copyRequested, items) => submitAssessment(summary.id, copyRequested, items),
+  };
   const [answers, setAnswers] = useState<AnswerMap>(detail.answers);
   const [status, setStatus] = useState<AssignmentStatus>(summary.status);
   const [step, setStep] = useState<Step>('edit');
@@ -90,7 +109,7 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
   async function saveDraft() {
     setPending('save');
     setNotice(null);
-    const result = await saveAssessmentDraft(summary.id, toDraftPayload(answers));
+    const result = await act.save(toDraftPayload(answers));
     setPending(null);
     if (!result.ok) {
       setNotice({ tone: 'error', text: result.message });
@@ -104,7 +123,7 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
   async function clearDraft() {
     setPending('clear');
     setNotice(null);
-    const result = await clearAssessmentDraft(summary.id);
+    const result = await act.clear();
     setPending(null);
     setConfirmingClear(false);
     if (!result.ok) {
@@ -120,7 +139,7 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
   async function submitFeedback(copyRequested: boolean) {
     setPending('submit');
     setNotice(null);
-    const result = await submitAssessment(summary.id, copyRequested, toSubmitPayload(answers));
+    const result = await act.submit(copyRequested, toSubmitPayload(answers));
     setPending(null);
     if (result.ok) {
       setStatus('submitted');
@@ -137,6 +156,19 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
     }
   }
 
+  async function reopen() {
+    if (!act.reopen) return;
+    setPending('save');
+    setNotice(null);
+    const result = await act.reopen();
+    setPending(null);
+    if (!result.ok) {
+      setNotice({ tone: 'error', text: result.message });
+      return;
+    }
+    setStatus('draft');
+  }
+
   return (
     <div className="space-y-8">
       <header className="space-y-4">
@@ -146,7 +178,7 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
           className="inline-flex items-center gap-2 text-sm font-semibold text-ink-muted transition-colors duration-200 hover:text-ink"
         >
           <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-          Back to my assessments
+          {backLabel}
         </button>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0 space-y-1">
@@ -176,10 +208,12 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
         <>
           {status === 'submitted' && (
             <Notice tone="info">
-              Thank you. Your feedback has been submitted. To change it, use the Edit my responses link in your
-              confirmation email before the cycle closes.
+              {act.reopen
+                ? 'Thank you. Your feedback has been submitted. You can still change it until the cycle closes.'
+                : 'Thank you. Your feedback has been submitted. To change it, use the Edit my responses link in your confirmation email before the cycle closes.'}
             </Notice>
           )}
+          {status === 'submitted' && notice && <Notice tone={notice.tone}>{notice.text}</Notice>}
           {status !== 'submitted' && summary.cycle.status !== 'open' && (
             <Notice tone="info">This cycle has closed, so this feedback is read-only.</Notice>
           )}
@@ -216,9 +250,14 @@ export function AssessmentForm({ detail, onBack }: AssessmentFormProps) {
           </div>
 
           {status === 'submitted' ? (
-            <div className="flex justify-end">
+            <div className="flex flex-wrap justify-end gap-3">
+              {act.reopen && summary.cycle.status === 'open' && (
+                <button type="button" onClick={() => void reopen()} disabled={busy} className="btn-secondary">
+                  Change my answers
+                </button>
+              )}
               <button type="button" onClick={onBack} className="btn-primary">
-                Assess another talent
+                {actions ? 'Back to my forms' : 'Assess another talent'}
               </button>
             </div>
           ) : (

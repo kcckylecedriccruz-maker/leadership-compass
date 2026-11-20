@@ -7,7 +7,10 @@ const CLASSIFICATION_LABELS: Record<string, string> = {
   self: 'Self',
   immediate_manager: 'Manager',
   peer: 'Peer',
+  skip_level_manager: 'Skip-level manager',
   direct_report: 'Direct report',
+  skip_level_report: 'Skip-level report',
+  external: 'External',
 };
 
 export function ReportNotes({ notes }: { notes: NoteRow[] }) {

@@ -66,3 +66,9 @@ verify_jwt = true
 
 [functions.send-cycle-invites]
 verify_jwt = true
+
+[functions.evaluation-link]
+verify_jwt = false
+
+[functions.manage-people]
+verify_jwt = true

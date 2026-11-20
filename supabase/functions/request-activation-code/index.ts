@@ -60,11 +60,12 @@ async function withinRateLimit(admin: SupabaseClient, email: string): Promise<bo
 async function issueCode(admin: SupabaseClient, email: string): Promise<void> {
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id, role, activated_at")
+    .select("id, role, activated_at, person_type")
     .eq("email", email)
     .maybeSingle();
   if (profileError) throw new Error(`Could not load the profile: ${profileError.message}`);
-  if (!profile) return;
+  // External raters never get a login; they answer by secure link only.
+  if (!profile || profile.person_type === "external") return;
 
   if (profile.activated_at !== null) {
     await sendEmail({ type: "account_already_active", recipient_email: email });

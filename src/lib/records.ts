@@ -1,4 +1,4 @@
-export const CLASSIFICATIONS = ['self', 'immediate_manager', 'skip_level_manager', 'direct_report', 'skip_level_report', 'peer'] as const;
+export const CLASSIFICATIONS = ['self', 'immediate_manager', 'skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'] as const;
 export type Classification = (typeof CLASSIFICATIONS)[number];
 
 export const CYCLE_STATUSES = ['draft', 'open', 'closed'] as const;
@@ -29,6 +29,7 @@ export type CycleRecord = {
   include_upward: boolean;
   include_upward_skip: boolean;
   include_peers: boolean;
+  include_external: boolean;
   evaluations_generated_at: string | null;
 };
 

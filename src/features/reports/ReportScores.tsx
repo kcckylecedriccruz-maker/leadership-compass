@@ -62,7 +62,7 @@ export function ScoreTable({ scores }: { scores: ScoreRow[] }) {
         <section key={category} className="space-y-3" aria-label={category}>
           <h3 className="text-lg">{category}</h3>
           <div className="overflow-x-auto rounded-card border border-line bg-surface">
-            <table className="w-full min-w-[640px] text-left text-sm">
+            <table className="w-full min-w-[720px] text-left text-sm">
               <thead className="bg-muted text-xs uppercase tracking-wide text-ink-muted">
                 <tr>
                   <th className="px-4 py-3 font-semibold">Competency</th>
@@ -70,6 +70,7 @@ export function ScoreTable({ scores }: { scores: ScoreRow[] }) {
                   <th className="px-3 py-3 text-right font-semibold">Manager</th>
                   <th className="px-3 py-3 text-right font-semibold">Peers</th>
                   <th className="px-3 py-3 text-right font-semibold">Direct reports</th>
+                  <th className="px-3 py-3 text-right font-semibold">External</th>
                   <th className="px-3 py-3 text-right font-semibold">Others</th>
                   <th className="px-4 py-3 font-semibold">Band</th>
                   <th className="px-4 py-3 font-semibold">Perception</th>
@@ -83,6 +84,7 @@ export function ScoreTable({ scores }: { scores: ScoreRow[] }) {
                     <td className="px-3 py-3 text-right tabular-nums">{formatScore(row.manager_score)}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{formatScore(row.peer_score)}</td>
                     <td className="px-3 py-3 text-right tabular-nums">{formatScore(row.direct_report_score)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums">{formatScore(row.external_score)}</td>
                     <td className="px-3 py-3 text-right font-semibold tabular-nums">{formatScore(row.others_score)}</td>
                     <td className="px-4 py-3">{row.band ?? 'Not rated'}</td>
                     <td className="px-4 py-3 text-ink-muted">{row.perception ?? '-'}</td>

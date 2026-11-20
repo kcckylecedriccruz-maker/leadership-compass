@@ -75,11 +75,11 @@ async function issueTemporaryPassword(admin: SupabaseClient, email: string, acto
 
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id")
+    .select("id, person_type")
     .eq("email", email)
     .maybeSingle();
   if (profileError) throw new Error(`Could not load the profile: ${profileError.message}`);
-  if (!profile) return;
+  if (!profile || profile.person_type === "external") return;
 
   const password = temporaryPassword();
   const expiresAt = new Date(Date.now() + DAY_MS).toISOString();

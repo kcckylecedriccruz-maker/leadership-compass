@@ -5,6 +5,7 @@ import { Badge, type BadgeTone } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
 import { CycleDangerActions } from '@/features/cycles/CycleDangerActions';
 import { CycleDialog } from '@/features/cycles/CycleDialog';
+import { FeedbackLinks } from '@/features/cycles/FeedbackLinks';
 import { loadCycles } from '@/features/cycles/cycleQueries';
 import { CYCLE_STATUS_LABELS, formatDate, pluralise } from '@/lib/format';
 import type { CycleRecord, CycleStatus } from '@/lib/records';
@@ -159,6 +160,7 @@ function CycleCard({
       </dl>
       {cycle.status !== 'closed' && <EvaluationActions cycle={cycle} canEdit={Boolean(onEdit)} onChanged={onChanged} />}
       {cycle.status !== 'closed' && <CoverageWarning cycleId={cycle.id} />}
+      {cycle.status === 'open' && <FeedbackLinks cycleId={cycle.id} canManage={Boolean(onEdit)} />}
     </article>
   );
 }

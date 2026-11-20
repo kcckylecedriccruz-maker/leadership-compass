@@ -1,3 +1,4 @@
+import { callEdgeFunction, isRecord } from '@/lib/edgeFunctions';
 import { databaseErrorMessage } from '@/lib/errors';
 import { supabase } from '@/lib/supabase';
 
@@ -13,6 +14,10 @@ export type OrgPerson = {
   exclude_rated: boolean;
   exclude_rater: boolean;
   exclude_self: boolean;
+  person_type: 'employee' | 'external';
+  organisation: string | null;
+  /** False until they set a password; until then they answer by secure link. */
+  activated: boolean;
 };
 
 export type PeerStatus = 'suggested' | 'approved' | 'rejected';
@@ -27,17 +32,19 @@ export type PeerLink = {
 };
 
 export type OrgData = {
+  /** Employees only; external raters are listed per employee in externalsOf. */
   people: OrgPerson[];
   byId: Map<string, OrgPerson>;
   reportsOf: Map<string, OrgPerson[]>;
   peers: PeerLink[];
+  externalsOf: Map<string, OrgPerson[]>;
 };
 
 type Row = Record<string, unknown>;
 type Result = { ok: true } | { ok: false; message: string };
 
 const PERSON_COLUMNS =
-  'id, full_name, email, role, is_active, manager_id, department, position, exclude_rated, exclude_rater, exclude_self';
+  'id, full_name, email, role, is_active, manager_id, department, position, exclude_rated, exclude_rater, exclude_self, person_type, organisation, activated_at';
 
 function toPerson(row: Row): OrgPerson {
   return {
@@ -52,12 +59,28 @@ function toPerson(row: Row): OrgPerson {
     exclude_rated: row.exclude_rated === true,
     exclude_rater: row.exclude_rater === true,
     exclude_self: row.exclude_self === true,
+    person_type: row.person_type === 'external' ? 'external' : 'employee',
+    organisation: typeof row.organisation === 'string' ? row.organisation : null,
+    activated: typeof row.activated_at === 'string',
   };
 }
 
-export function buildOrg(people: OrgPerson[], peers: PeerLink[]): OrgData {
-  const sorted = [...people].sort((a, b) => a.full_name.localeCompare(b.full_name));
-  const byId = new Map(sorted.map((p) => [p.id, p]));
+export function buildOrg(
+  everyone: OrgPerson[],
+  peers: PeerLink[],
+  externalLinks: { employee_id: string; rater_id: string }[] = [],
+): OrgData {
+  const all = [...everyone].sort((a, b) => a.full_name.localeCompare(b.full_name));
+  const sorted = all.filter((p) => p.person_type === 'employee');
+  const byId = new Map(all.map((p) => [p.id, p]));
+  const externalsOf = new Map<string, OrgPerson[]>();
+  for (const link of externalLinks) {
+    const rater = byId.get(link.rater_id);
+    if (!rater) continue;
+    const list = externalsOf.get(link.employee_id) ?? [];
+    list.push(rater);
+    externalsOf.set(link.employee_id, list);
+  }
   const reportsOf = new Map<string, OrgPerson[]>();
   for (const person of sorted) {
     if (!person.manager_id) continue;
@@ -65,13 +88,14 @@ export function buildOrg(people: OrgPerson[], peers: PeerLink[]): OrgData {
     list.push(person);
     reportsOf.set(person.manager_id, list);
   }
-  return { people: sorted, byId, reportsOf, peers };
+  return { people: sorted, byId, reportsOf, peers, externalsOf };
 }
 
 export async function loadOrg(): Promise<OrgData> {
-  const [profiles, peers] = await Promise.all([
+  const [profiles, peers, externals] = await Promise.all([
     supabase.from('profiles').select(PERSON_COLUMNS).order('full_name'),
     supabase.from('peer_relationships').select('id, employee_id, peer_id, status, suggested_by, created_at'),
+    supabase.from('external_raters').select('employee_id, rater_id'),
   ]);
   if (profiles.error) throw profiles.error;
   return buildOrg(
@@ -84,6 +108,7 @@ export async function loadOrg(): Promise<OrgData> {
       suggested_by: typeof r.suggested_by === 'string' ? r.suggested_by : null,
       created_at: String(r.created_at ?? ''),
     })),
+    ((externals.data ?? []) as Row[]).map((r) => ({ employee_id: String(r.employee_id), rater_id: String(r.rater_id) })),
   );
 }
 
@@ -143,4 +168,43 @@ export async function decidePeer(linkId: string, approve: boolean): Promise<Resu
 export async function removePeer(linkId: string): Promise<Result> {
   const { error } = await supabase.rpc('remove_peer', { p_id: linkId });
   return errorResult(error);
+}
+
+type ManageResult = { ok: true; data: Record<string, unknown> } | { ok: false; message: string };
+
+async function managePeople(action: string, body: Record<string, unknown>): Promise<ManageResult> {
+  const result = await callEdgeFunction('manage-people', { action, ...body }, isRecord);
+  return result.ok ? { ok: true, data: result.data } : { ok: false, message: result.message };
+}
+
+/** Adds an employee without an account invitation: they answer by secure link until they activate. */
+export function quickAddEmployee(input: {
+  full_name: string;
+  email: string;
+  manager_id: string | null;
+  department: string;
+  position: string;
+}): Promise<ManageResult> {
+  return managePeople('quick_add_employee', input);
+}
+
+export function addExternalRater(input: {
+  employee_id: string;
+  full_name: string;
+  email: string;
+  organisation: string;
+}): Promise<ManageResult> {
+  return managePeople('add_external', input);
+}
+
+export function removeExternalRater(employeeId: string, raterId: string): Promise<ManageResult> {
+  return managePeople('remove_external', { employee_id: employeeId, rater_id: raterId });
+}
+
+export function sendEvaluationLink(profileId: string, cycleId: string): Promise<ManageResult> {
+  return managePeople('send_link', { profile_id: profileId, cycle_id: cycleId });
+}
+
+export function revokeEvaluationLink(profileId: string, cycleId: string): Promise<ManageResult> {
+  return managePeople('revoke_link', { profile_id: profileId, cycle_id: cycleId });
 }

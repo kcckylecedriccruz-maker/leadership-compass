@@ -13,6 +13,7 @@ export const EMAIL_KINDS = [
   "account_already_active",
   "talent_added",
   "test_email",
+  "evaluation_link",
 ] as const;
 
 export type EmailKind = (typeof EMAIL_KINDS)[number];
@@ -33,6 +34,16 @@ export type EmailData =
       closesAt: string;
       temporaryPassword: string | null;
       loginUrl: string;
+      /** Set for people without an active account: their private link replaces sign-in. */
+      linkUrl: string | null;
+    }
+  | {
+      kind: "evaluation_link";
+      recipientName: string | null;
+      cycleName: string;
+      closesAt: string;
+      linkUrl: string;
+      forms: string[];
     }
   | {
       kind: "submitted_alert";
@@ -219,6 +230,24 @@ function daysLeftText(daysLeft: number): string {
 export function renderEmail(data: EmailData): RenderedEmail {
   switch (data.kind) {
     case "invite":
+      if (data.linkUrl) {
+        return {
+          subject: `You've been asked to give feedback on ${data.talentName} (${data.cycleName})`,
+          paragraphs: [
+            greeting(data.recipientName),
+            `You've been asked to give feedback on ${data.talentName} as part of the ${APP_TITLE} for ${data.cycleName}.`,
+            "No account or password is needed: the button below opens your private feedback page with every form you have in this cycle.",
+          ],
+          details: [],
+          table: null,
+          button: { label: "Open my feedback forms", url: data.linkUrl },
+          footer: [
+            `Please complete your feedback by ${formatDate(data.closesAt)}.`,
+            "This link is personal. Please do not forward it; anyone with it can fill in your forms until the cycle closes.",
+          ],
+          lockedNote: true,
+        };
+      }
       return {
         subject: `You've been asked to give feedback on ${data.talentName} (${data.cycleName})`,
         paragraphs: [
@@ -327,6 +356,26 @@ export function renderEmail(data: EmailData): RenderedEmail {
         button: { label: "Open dashboard", url: data.dashboardUrl },
         footer: [WHY_TEXT.submitted_alert ?? ""],
         lockedNote: false,
+      };
+
+    case "evaluation_link":
+      return {
+        subject: `Your feedback link for ${data.cycleName}`,
+        paragraphs: [
+          greeting(data.recipientName),
+          `Here is your private link for the ${APP_TITLE} ${data.cycleName}. No account or password is needed.`,
+          data.forms.length > 0
+            ? `You have ${data.forms.length} form${data.forms.length === 1 ? "" : "s"} to complete.`
+            : "You have no forms left to complete in this cycle.",
+        ],
+        details: [],
+        table: data.forms.length > 0 ? { headers: ["Feedback for"], rows: data.forms.map((name) => [name]) } : null,
+        button: { label: "Open my feedback forms", url: data.linkUrl },
+        footer: [
+          `Please complete your feedback by ${formatDate(data.closesAt)}. Earlier links for this cycle no longer work.`,
+          "This link is personal. Please do not forward it; anyone with it can fill in your forms until the cycle closes.",
+        ],
+        lockedNote: true,
       };
 
     case "reminder":

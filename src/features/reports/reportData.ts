@@ -10,6 +10,7 @@ export type ScoreRow = {
   manager_score: number | null;
   peer_score: number | null;
   direct_report_score: number | null;
+  external_score: number | null;
   others_score: number | null;
   gap_to_target: number | null;
   band: string | null;

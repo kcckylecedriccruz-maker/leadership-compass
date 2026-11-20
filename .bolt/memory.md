@@ -85,3 +85,10 @@
 - Reports: admin-only by default. report_shares + share_report/unshare_report let admins share consolidated or individual reports with the immediate or skip-level manager. individual_feedback(cycle, talent) names only managers' feedback. Employees see their own report after the cycle closes (private.can_view_cycle_report).
 - send-cycle-invites edge function sends invitations for an open cycle immediately (60 per call; loop until remaining = 0).
 - restart_cycle(cycle, confirm_name) / delete_cycle(cycle, confirm_name): admin only, name must match. Restart deletes responses, resets assignments to not_started, clears shares/notices, sets draft. Delete removes notifications, notices, shares, responses, assignments, then the cycle. Both write one audit_log row (counts only).
+
+## Evaluating without an account (migration 20261120140000)
+- profiles.person_type 'employee' | 'external' (+ organisation). Externals: no talents row, never rated, never a manager or peer, login created banned; request-activation-code, activate-account and forgot-password ignore them. Hide them from User control and the org tree (orgData.people is employees only; externalsOf per employee).
+- external_raters(employee_id, rater_id): like approved peers; kind/origin 'external'; cycles.include_external. apply_external_rater / withdraw_external_rater are service-role only.
+- evaluation_links(profile_id, cycle_id, version, revoked_at): token = id.version.HMAC (key LINK_SIGNING_SECRET or the service role key); never store tokens. _shared/evaluationLinks.ts has currentLinkToken / rotateLink / revokeLink / resolveLink / usesLink.
+- People who use links: externals and anyone with activated_at null. send-email puts the link in invite, reminder and submission_confirmation for them; evaluation_link is a separate always-on email.
+- Public page /e/<token> (EvaluationLinkPage) reuses AssessmentForm with link actions. Submissions share _shared/submission.ts with submit-assessment; keep them in one place.

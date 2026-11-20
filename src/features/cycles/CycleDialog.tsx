@@ -27,7 +27,7 @@ type FormValues = {
 };
 
 // Which evaluations this cycle builds from the org structure (all on by default).
-type IncludeKey = 'include_self' | 'include_manager' | 'include_skip_level' | 'include_upward' | 'include_upward_skip' | 'include_peers';
+type IncludeKey = 'include_self' | 'include_manager' | 'include_skip_level' | 'include_upward' | 'include_upward_skip' | 'include_peers' | 'include_external';
 
 const INCLUDE_OPTIONS: { key: IncludeKey; label: string; help: string }[] = [
   { key: 'include_self', label: 'Self', help: 'Each employee assesses themselves' },
@@ -36,6 +36,7 @@ const INCLUDE_OPTIONS: { key: IncludeKey; label: string; help: string }[] = [
   { key: 'include_upward', label: 'Upward to manager', help: 'Employees assess their immediate manager' },
   { key: 'include_upward_skip', label: 'Upward to skip-level', help: 'Employees assess their manager’s manager' },
   { key: 'include_peers', label: 'Peers', help: 'Approved peers assess the employee' },
+  { key: 'include_external', label: 'External raters', help: 'Clients, partners or contractors added to an employee give feedback by secure link' },
 ];
 
 const ALL_INCLUDED: Record<IncludeKey, boolean> = {
@@ -45,6 +46,7 @@ const ALL_INCLUDED: Record<IncludeKey, boolean> = {
   include_upward: true,
   include_upward_skip: true,
   include_peers: true,
+  include_external: true,
 };
 
 type CyclePayload = {
@@ -87,6 +89,7 @@ function initialValues(cycle: CycleRecord | null): FormValues {
       include_upward: cycle.include_upward ?? true,
       include_upward_skip: cycle.include_upward_skip ?? true,
       include_peers: cycle.include_peers ?? true,
+      include_external: cycle.include_external ?? true,
     },
   };
 }

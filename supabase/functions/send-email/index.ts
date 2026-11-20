@@ -244,7 +244,7 @@ async function checkGmailDailyQuota(admin: SupabaseClient, config: Config, sende
   }
 }
 
-const ALWAYS_ON: EmailKind[] = ["invite", "account_activation", "temporary_password"];
+const ALWAYS_ON: EmailKind[] = ["invite", "account_activation", "temporary_password", "evaluation_link"];
 const REMINDER_INTERVAL_FLOOR_DAYS = 1;
 
 async function profileIdForEmail(admin: SupabaseClient, email: string): Promise<string | null> {
@@ -380,6 +380,9 @@ function parsePayload(body: unknown): ParseResult {
   }
   if (emailKind === "dashboard_ready" && (!cycleId || !talentId)) {
     return { ok: false, error: "cycle_id and talent_id are required for dashboard_ready emails." };
+  }
+  if (emailKind === "evaluation_link" && !cycleId) {
+    return { ok: false, error: "cycle_id is required for evaluation_link emails." };
   }
   if (emailKind === "cycle_closed" && !cycleId) {
     return { ok: false, error: "cycle_id is required for cycle_closed emails." };

@@ -9,6 +9,8 @@ import { ActivatePage } from '@/pages/ActivatePage';
 import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
+import { linkTokenFromPath } from '@/features/link/linkApi';
+import { EvaluationLinkPage } from '@/pages/EvaluationLinkPage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { WorkspacePage } from '@/pages/WorkspacePage';
 import { NotificationSettingsPage } from '@/features/notifications/NotificationSettingsPage';
@@ -146,6 +148,9 @@ function AppGate() {
 function App() {
   // Public page, no sign-in: linked from Google's consent screen (Branding).
   if (window.location.pathname.replace(/\/+$/, '') === '/privacy') return <PrivacyPage />;
+  // Secure feedback link: no sign-in, the token is the credential.
+  const linkToken = linkTokenFromPath(window.location.pathname);
+  if (linkToken) return <EvaluationLinkPage token={linkToken} />;
   return (
     <AuthProvider>
       <AppGate />

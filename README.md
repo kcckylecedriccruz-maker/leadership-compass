@@ -37,6 +37,7 @@ the org structure. Each person gets a report with readiness, strengths, blind sp
 | --- | --- |
 | **Assessments** | 19 competencies in 4 categories (Leading Self, Leading Others, Leading the Business, Leading Change). Each assessor gives a 1–5 rating and a behaviour note per competency; drafts save automatically; forms lock on submit and at the cycle's close date. |
 | **Org structure** | Org chart of reporting lines (immediate manager; skip-level is automatic). Peers per person with no minimum or maximum: employees suggest, the immediate manager approves; admins and managers assign directly. Per-person exclusions: not rated by others, does not rate others, no self-assessment. |
+| **Without an account** | People with no active account answer by a **secure email link** (one per person per cycle, works until the cycle closes, resend or switch off per cycle). **Quick add** puts an employee in the org chart without an invitation; **external raters** (clients, partners, contractors) are added per employee, never get an account, and form an anonymous *External* group in reports. |
 | **Review cycles** | Draft → open → closed, with reminders, submit alerts and a minimum group size for anonymity. Each cycle chooses which relationships to include (self, manager, skip-level manager, direct reports, skip-level reports, peers). Opening builds every evaluation from the org structure as a snapshot; admins can refresh it and send invitations immediately. Administrators can **Restart** a cycle (clears every answer, back to draft) or **Delete** it, confirmed by typing its name. |
 | **Reports** | Admin-only by default, with *Individual feedback* (named for managers, anonymous for others) and sharing of the consolidated or individual report with the immediate or skip-level manager. Employees see their own report automatically after the cycle closes. Scores by rater group, band (Strength / Developing / Development need), perception (Blind spot / Hidden strength / Aligned), readiness by category, three focus areas with actions, and a 30–360 day plan. |
 | **User control** | Add users (they choose their own password through an emailed 6-digit code), change roles, give **view or edit access per module**, deactivate and reactivate, require a new password, resend invites. |
@@ -321,6 +322,8 @@ privately rather than in a public issue.
 | `resend-invite` | Resend an account invitation | Users or Assignments edit, managers |
 | `create-talent`, `add-existing-talents` | Add talents with managers | Talents edit |
 | `invite-assessor` | Add an assessor to a talent in a cycle | Assignments edit, the talent's managers |
+| `evaluation-link` | Public: open, save, submit and reopen forms through a secure link | The link's person, for that cycle only |
+| `manage-people` | Quick add employee, add/remove external raters, send/revoke links | Org structure edit, the employee's manager (own team), Cycles or Assignments edit for links |
 | `send-cycle-invites` | Email invitations for an open cycle's evaluations now (60 per call) | Admins, Cycles edit |
 | `submit-assessment`, `reopen-assessment` | Submit feedback; reopen by link | The assessor |
 | `send-email`, `send-test-email` | Render, send and log emails | Internal secret; admin |

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import type { CopyRow, EmailData, EmailKind } from "./templates.ts";
+import { currentLinkToken, linkUrl, usesLink } from "../_shared/evaluationLinks.ts";
 
 export type EmailRequest = {
   kind: EmailKind;
@@ -61,6 +62,25 @@ async function loadRecipientName(admin: Admin, email: string): Promise<string | 
   return data?.full_name ?? null;
 }
 
+type Recipient = { id: string; full_name: string; activated_at: string | null; person_type: string };
+
+async function loadRecipient(admin: Admin, email: string): Promise<Recipient | null> {
+  const { data, error } = await admin
+    .from("profiles")
+    .select("id, full_name, activated_at, person_type")
+    .eq("email", email)
+    .maybeSingle();
+  if (error) throw new Error(`Could not load recipient: ${error.message}`);
+  return data as Recipient | null;
+}
+
+/** The private link for people without an active account; null for everyone who signs in. */
+async function linkFor(admin: Admin, appUrl: string, email: string, cycleId: string): Promise<string | null> {
+  const recipient = await loadRecipient(admin, email);
+  if (!recipient || !usesLink(recipient)) return null;
+  return linkUrl(appUrl, await currentLinkToken(admin, recipient.id, cycleId));
+}
+
 function daysUntil(iso: string): number {
   return Math.max(0, Math.ceil((Date.parse(iso) - Date.now()) / DAY_MS));
 }
@@ -99,6 +119,7 @@ async function prepareInvite(admin: Admin, appUrl: string, request: EmailRequest
       closesAt: assignment.cycles.closes_at,
       temporaryPassword: request.temporaryPassword,
       loginUrl: `${appUrl}/`,
+      linkUrl: await linkFor(admin, appUrl, request.recipientEmail, assignment.cycle_id),
     },
   };
 }
@@ -141,7 +162,7 @@ async function prepareReminder(admin: Admin, appUrl: string, request: EmailReque
       cycleName: assignment.cycles.name,
       closesAt: assignment.cycles.closes_at,
       daysLeft: daysUntil(assignment.cycles.closes_at),
-      actionUrl: `${appUrl}/`,
+      actionUrl: (await linkFor(admin, appUrl, request.recipientEmail, assignment.cycle_id)) ?? `${appUrl}/`,
     },
   };
 }
@@ -193,7 +214,8 @@ async function prepareSubmissionConfirmation(
       talentName: assignment.talents.profile.full_name,
       cycleName: assignment.cycles.name,
       closesAt: assignment.cycles.closes_at,
-      editUrl: `${appUrl}/edit/${token}`,
+      // Link users change their answers on their private page instead of signing in.
+      editUrl: (await linkFor(admin, appUrl, request.recipientEmail, assignment.cycle_id)) ?? `${appUrl}/edit/${token}`,
       copyRows,
     },
   };
@@ -351,6 +373,41 @@ function prepareTalentAdded(appUrl: string, request: EmailRequest): PrepareResul
   };
 }
 
+async function prepareEvaluationLink(admin: Admin, appUrl: string, request: EmailRequest): Promise<PrepareResult> {
+  const cycleId = requireId(request.cycleId);
+  const recipient = await loadRecipient(admin, request.recipientEmail);
+  if (!recipient) return rejected(404, "The recipient could not be found.");
+  if (!usesLink(recipient)) return rejected(409, "This person signs in with an account, so no link is sent.");
+  const { data: cycle, error } = await admin.from("cycles").select("name, closes_at, status").eq("id", cycleId).maybeSingle();
+  if (error) throw new Error(`Could not load cycle: ${error.message}`);
+  if (!cycle) return rejected(404, "The cycle could not be found.");
+  if (cycle.status !== "open") return rejected(409, "This cycle is not open.");
+  const { data: forms, error: formsError } = await admin
+    .from("assignments")
+    .select("classification, talents(profile:profiles!profile_id(full_name))")
+    .eq("cycle_id", cycleId)
+    .eq("assessor_id", recipient.id)
+    .neq("status", "submitted");
+  if (formsError) throw new Error(`Could not load forms: ${formsError.message}`);
+  type FormRow = { classification: string; talents: { profile: { full_name: string } } };
+  const names = ((forms ?? []) as unknown as FormRow[])
+    .map((row) => (row.classification === "self" ? "Yourself (self-assessment)" : row.talents.profile.full_name))
+    .sort();
+  return {
+    outcome: "ready",
+    cycleId,
+    assignmentId: null,
+    data: {
+      kind: "evaluation_link",
+      recipientName: recipient.full_name,
+      cycleName: cycle.name,
+      closesAt: cycle.closes_at,
+      linkUrl: linkUrl(appUrl, await currentLinkToken(admin, recipient.id, cycleId)),
+      forms: names,
+    },
+  };
+}
+
 function requireId(value: string | null): string {
   if (!value) throw new Error("Missing identifier for this email type.");
   return value;
@@ -398,5 +455,7 @@ export async function prepareEmail(admin: Admin, appUrl: string, request: EmailR
       return prepareTalentAdded(appUrl, request);
     case "test_email":
       return prepareTestEmail(admin, appUrl, request);
+    case "evaluation_link":
+      return prepareEvaluationLink(admin, appUrl, request);
   }
 }

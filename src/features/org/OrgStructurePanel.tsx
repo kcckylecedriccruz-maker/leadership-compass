@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, Loader2, Network, Search, UserRound } from 'lucide-react';
+import { ChevronDown, ChevronRight, Loader2, Network, Search, UserPlus, UserRound } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
+import { ExternalRaters } from '@/features/org/ExternalRaters';
 import { PeerManager } from '@/features/org/PeerManager';
+import { QuickAddDialog } from '@/features/org/QuickAddDialog';
 import {
   descendantsOf,
   loadOrg,
@@ -18,6 +20,8 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [quickAdd, setQuickAdd] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const org = state.status === 'ready' ? state.data : null;
   const active = useMemo(() => (org ? org.people.filter((p) => p.is_active) : []), [org]);
@@ -80,6 +84,7 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
               {reports.length > 0 ? ` · ${reports.length} report${reports.length === 1 ? '' : 's'}` : ''}
             </span>
           </button>
+          {!person.activated && <Badge tone="neutral">Link</Badge>}
           {(person.exclude_rated || person.exclude_rater || person.exclude_self) && <Badge tone="warning">Excluded</Badge>}
         </div>
         {reports.length > 0 && open && <ul>{reports.map((r) => renderNode(r, depth + 1))}</ul>}
@@ -89,6 +94,7 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
 
   return (
     <section className="space-y-6" aria-labelledby="org-heading">
+      <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="space-y-1">
         <h2 id="org-heading" className="flex items-center gap-2 text-2xl">
           <Network className="h-6 w-6 text-primary" aria-hidden="true" />
@@ -96,9 +102,29 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
         </h2>
         <p className="text-sm leading-relaxed text-ink-muted">
           Who reports to whom. Each cycle builds its evaluations from this when it opens: self, immediate manager, skip-level
-          manager, direct reports, skip-level reports and approved peers.
+          manager, direct reports, skip-level reports, approved peers and external raters. People marked Link have no
+          active account and answer by secure email link.
         </p>
       </div>
+        {canEdit && org && (
+          <button type="button" className="btn-secondary" onClick={() => setQuickAdd(true)}>
+            <UserPlus className="h-4 w-4" aria-hidden="true" />
+            Quick add employee
+          </button>
+        )}
+      </div>
+      {notice && <Notice tone="info">{notice}</Notice>}
+      {quickAdd && org && (
+        <QuickAddDialog
+          org={org}
+          onClose={() => setQuickAdd(false)}
+          onDone={(message) => {
+            setQuickAdd(false);
+            setNotice(message);
+            reload();
+          }}
+        />
+      )}
 
       <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
@@ -228,6 +254,9 @@ function PersonEditor({
       <div>
         <p className="text-lg font-semibold">{person.full_name}</p>
         <p className="text-sm text-ink-muted">{person.email}</p>
+        {!person.activated && (
+          <p className="mt-1 text-xs text-ink-muted">No active account yet: they answer by secure email link.</p>
+        )}
       </div>
 
       <form
@@ -327,6 +356,7 @@ function PersonEditor({
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
 
       <PeerManager org={org} employee={person} canManage={canEdit} onChanged={onChanged} />
+      <ExternalRaters org={org} employee={person} canManage={canEdit} onChanged={onChanged} />
     </div>
   );
 }

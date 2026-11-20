@@ -404,6 +404,30 @@ matching the org chart.
 
 ---
 
+## Prompt 14: Evaluating without an account
+
+```
+Let people without an active account take part.
+- profiles.person_type employee | external (+ organisation). External raters never get a usable login (create it
+  banned), are never rated, never a manager or peer, and have no talents row. Activation and password reset ignore them.
+- external_raters(employee_id, rater_id) per employee, added by admins, Org structure editors or the immediate
+  manager; included in every cycle with include_external (new kind and origin 'external'); anonymous External group
+  in reports (competency_scores.external_score, hidden below the minimum group size).
+- Quick add employee (name, email, manager, no invitation) in Org structure and in My team (own direct reports).
+- evaluation_links(profile_id, cycle_id, version, revoked_at). Token = id.version.HMAC-SHA256 signed in the edge
+  functions; nothing secret stored. Externals and anyone not activated get the link in invitations, reminders and
+  submission confirmations; an always-on evaluation_link email lists their forms.
+- Public edge function evaluation-link (verify_jwt false): open, load, save, clear, submit, reopen, all limited to
+  the link's person and cycle and to open cycles. Public page /e/<token> reuses the assessment form.
+- Edge function manage-people: quick_add_employee, add_external, remove_external, send_link (rotates the link and
+  emails it), revoke_link. Each open cycle card lists who answers by link with Resend link and Switch off.
+```
+
+**Check:** add an external rater to someone in an open cycle, send them the link, submit their form from the link page,
+and see the External column in the report once enough externals answered.
+
+---
+
 ## After the build
 
 1. Push migrations and deploy functions: `npx supabase db push` and `npx supabase functions deploy`.

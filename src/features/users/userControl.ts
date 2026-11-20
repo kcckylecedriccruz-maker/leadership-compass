@@ -30,7 +30,8 @@ function text(value: unknown): string | null {
 
 export async function loadManagedUsers(): Promise<ManagedUser[]> {
   const [profiles, signIns, access, members] = await Promise.all([
-    supabase.from('profiles').select('*').order('full_name'),
+    // External raters never get an account; they are managed per employee in Org structure.
+    supabase.from('profiles').select('*').eq('person_type', 'employee').order('full_name'),
     // Latest sign-in per person comes from the audit trail (auth.sign_in events).
     supabase
       .from('audit_log')

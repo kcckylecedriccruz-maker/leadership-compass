@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { ChevronDown, ChevronRight, UserPlus, Users } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
+import { ExternalRaters } from '@/features/org/ExternalRaters';
 import { PeerManager } from '@/features/org/PeerManager';
+import { QuickAddDialog } from '@/features/org/QuickAddDialog';
 import { loadOrg } from '@/features/org/orgData';
 import { SharedReports } from '@/features/reports/SharedReports';
 import type { Profile } from '@/lib/types';
@@ -12,6 +14,8 @@ import { useAsyncData } from '@/lib/useAsyncData';
 export function TeamPage({ profile }: { profile: Profile }) {
   const { state, reload } = useAsyncData(loadOrg);
   const [open, setOpen] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const org = state.status === 'ready' ? state.data : null;
   const team = org ? (org.reportsOf.get(profile.id) ?? []).filter((p) => p.is_active) : [];
@@ -23,8 +27,8 @@ export function TeamPage({ profile }: { profile: Profile }) {
         <p className="eyebrow">Your team</p>
         <h1 className="text-3xl sm:text-4xl">My team</h1>
         <p className="max-w-2xl text-base leading-relaxed text-ink-muted">
-          Choose who gives your direct reports Peer feedback, approve their suggestions, and open reports an administrator
-          has shared with you.
+          Choose who gives your direct reports Peer and External feedback, approve their suggestions, add new team members,
+          and open reports an administrator has shared with you.
         </p>
       </div>
 
@@ -35,7 +39,26 @@ export function TeamPage({ profile }: { profile: Profile }) {
             Direct reports
           </h2>
           {waiting.length > 0 && <Badge tone="warning">{waiting.length} peer suggestion{waiting.length === 1 ? '' : 's'} waiting</Badge>}
+          {org && (
+            <button type="button" className="btn-secondary ml-auto px-3 py-2" onClick={() => setAdding(true)}>
+              <UserPlus className="h-4 w-4" aria-hidden="true" />
+              Add a direct report
+            </button>
+          )}
         </div>
+        {notice && <Notice tone="info">{notice}</Notice>}
+        {adding && org && (
+          <QuickAddDialog
+            org={org}
+            fixedManagerId={profile.id}
+            onClose={() => setAdding(false)}
+            onDone={(message) => {
+              setAdding(false);
+              setNotice(message);
+              reload();
+            }}
+          />
+        )}
 
         {state.status === 'loading' && <p className="text-sm text-ink-muted">Loading your team...</p>}
         {state.status === 'error' && (
@@ -73,8 +96,9 @@ export function TeamPage({ profile }: { profile: Profile }) {
                     </span>
                   </button>
                   {expanded && (
-                    <div className="border-t border-line p-4">
+                    <div className="space-y-6 border-t border-line p-4">
                       <PeerManager org={org} employee={person} canManage onChanged={reload} />
+                      <ExternalRaters org={org} employee={person} canManage onChanged={reload} />
                     </div>
                   )}
                 </li>

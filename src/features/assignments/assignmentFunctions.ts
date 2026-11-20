@@ -7,11 +7,14 @@ export type InviteAssessorBody = {
   classification: Classification;
   assessor_email: string | null;
   assessor_name: string | null;
+  organisation?: string | null;
 };
 
 export type InviteAssessorResult = {
   assignment_id: string;
   email_sent: boolean;
+  /** Draft cycle: the invitation goes out when the cycle opens. */
+  waiting_for_open?: boolean;
 };
 
 function isInviteAssessorResult(value: unknown): value is InviteAssessorResult {

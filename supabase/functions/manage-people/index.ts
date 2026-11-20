@@ -13,6 +13,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import { AccessError, type Caller, callerFromRequest, hasModule } from "../_shared/access.ts";
 import { revokeLink, rotateLink, usesLink } from "../_shared/evaluationLinks.ts";
+import { ExternalRaterError, findOrCreateExternal, linkExternalToEmployee } from "../_shared/externalRaters.ts";
 import { createOneUser, EMAIL_PATTERN } from "../_shared/userCreation.ts";
 
 const corsHeaders = {
@@ -102,10 +103,6 @@ async function quickAddEmployee(admin: Admin, caller: Caller, body: Body) {
   return { id: outcome.id };
 }
 
-function randomPassword(): string {
-  return btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(32))));
-}
-
 async function requireEmployee(admin: Admin, employeeId: string) {
   const { data } = await admin.from("profiles").select("id, person_type, is_active").eq("id", employeeId).maybeSingle();
   const row = data as { id: string; person_type: string; is_active: boolean } | null;
@@ -122,52 +119,9 @@ async function addExternal(admin: Admin, caller: Caller, body: Body) {
   const fullName = text(body, "full_name", 200, true);
   const organisation = text(body, "organisation", 100) || null;
 
-  const { data: existing } = await admin
-    .from("profiles")
-    .select("id, person_type, is_active")
-    .eq("email", address)
-    .maybeSingle();
-  let raterId: string;
-  const found = existing as { id: string; person_type: string; is_active: boolean } | null;
-  if (found) {
-    if (found.person_type !== "external") {
-      throw new AccessError(409, `${address} belongs to an employee. Add them as a peer instead.`);
-    }
-    if (!found.is_active) throw new AccessError(409, `${address} has been deactivated.`);
-    raterId = found.id;
-  } else {
-    // A login exists only because every person needs one in this system; it is banned so it can never sign in.
-    const { data: created, error } = await admin.auth.admin.createUser({
-      email: address,
-      password: randomPassword(),
-      email_confirm: true,
-      ban_duration: "876000h",
-      user_metadata: { full_name: fullName, external: true },
-    });
-    if (error || !created.user) {
-      const taken = /already|registered|exists/i.test(error?.message ?? "");
-      throw new AccessError(taken ? 409 : 500, taken ? `${address} is already in use.` : "Could not add the external rater.");
-    }
-    raterId = created.user.id;
-    const { error: profileError } = await admin.from("profiles").insert({
-      id: raterId,
-      full_name: fullName,
-      email: address,
-      role: "employee",
-      person_type: "external",
-      organisation,
-      must_change_password: false,
-    });
-    if (profileError) {
-      await admin.auth.admin.deleteUser(raterId);
-      throw new Error(`Could not save the external rater: ${profileError.message}`);
-    }
-  }
-
-  const { error: linkError } = await admin
-    .from("external_raters")
-    .upsert({ employee_id: employeeId, rater_id: raterId, added_by: caller.id }, { onConflict: "employee_id,rater_id", ignoreDuplicates: true });
-  if (linkError) throw new Error(`Could not link the external rater: ${linkError.message}`);
+  const rater = await findOrCreateExternal(admin, { email: address, fullName, organisation });
+  const raterId = rater.id;
+  await linkExternalToEmployee(admin, employeeId, raterId, caller.id);
   const { data: added, error: applyError } = await admin.rpc("apply_external_rater", { p_employee: employeeId, p_rater: raterId });
   if (applyError) throw new Error(`Could not add them to open cycles: ${applyError.message}`);
   return { id: raterId, added_to_open_cycles: added ?? 0 };
@@ -252,7 +206,7 @@ Deno.serve(async (req) => {
         return json({ error: "Unknown action." }, 400);
     }
   } catch (error) {
-    if (error instanceof AccessError) return json({ error: error.message }, error.status);
+    if (error instanceof AccessError || error instanceof ExternalRaterError) return json({ error: error.message }, error.status);
     console.error("manage-people failed:", error instanceof Error ? error.message : error);
     return json({ error: "Something went wrong. Please try again." }, 500);
   }

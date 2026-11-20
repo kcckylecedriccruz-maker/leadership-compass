@@ -16,17 +16,20 @@ type AddAssessorDialogProps = {
   onClose: () => void;
 };
 
-const PERSON_TYPES: readonly Classification[] = ['direct_report', 'peer'];
+// Everyone except Self and Immediate manager is chosen by email.
+const PERSON_TYPES: readonly Classification[] = ['skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'];
 
 export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: AddAssessorDialogProps) {
   const [classification, setClassification] = useState<Classification | null>(null);
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [organisation, setOrganisation] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [unsentResult, setUnsentResult] = useState<InviteAssessorResult | null>(null);
 
   const needsEmail = classification !== null && PERSON_TYPES.includes(classification);
+  const isExternal = classification === 'external';
 
   function describe(option: Classification): string {
     if (option === 'immediate_manager') {
@@ -55,6 +58,7 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
       classification,
       assessor_email: needsEmail ? email.trim() : null,
       assessor_name: needsEmail && name.trim() ? name.trim() : null,
+      organisation: isExternal && organisation.trim() ? organisation.trim() : null,
     });
     setSaving(false);
 
@@ -63,7 +67,7 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
       return;
     }
     onAdded();
-    if (result.data.email_sent) {
+    if (result.data.email_sent || result.data.waiting_for_open) {
       onClose();
       return;
     }
@@ -120,18 +124,26 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
 
           {needsEmail && (
             <div className="grid gap-5 sm:grid-cols-2">
-              <FormField id="assessor-email" label="Email" hint="Use the email of an existing person to link them.">
+              <FormField
+                id="assessor-email"
+                label="Email"
+                hint={
+                  isExternal
+                    ? 'They never get an account; they answer by secure email link.'
+                    : 'Use the email of an existing person to link them.'
+                }
+              >
                 <input
                   id="assessor-email"
                   type="email"
                   autoComplete="off"
-                  list="known-people"
+                  list={isExternal ? undefined : 'known-people'}
                   className="field-input"
                   value={email}
                   onChange={(event) => setEmail(event.target.value)}
                 />
               </FormField>
-              <FormField id="assessor-name" label="Full name" hint="Needed only for someone new.">
+              <FormField id="assessor-name" label="Full name" hint={isExternal ? 'Needed for someone not added before.' : 'Needed only for someone new.'}>
                 <input
                   id="assessor-name"
                   className="field-input"
@@ -140,6 +152,17 @@ export function AddAssessorDialog({ cycle, talent, people, onAdded, onClose }: A
                   maxLength={200}
                 />
               </FormField>
+              {isExternal && (
+                <FormField id="assessor-org" label="Organisation (optional)" hint="Client, partner or contractor company.">
+                  <input
+                    id="assessor-org"
+                    className="field-input"
+                    value={organisation}
+                    onChange={(event) => setOrganisation(event.target.value)}
+                    maxLength={100}
+                  />
+                </FormField>
+              )}
               <datalist id="known-people">
                 {people.map((person) => (
                   <option key={person.id} value={person.email}>

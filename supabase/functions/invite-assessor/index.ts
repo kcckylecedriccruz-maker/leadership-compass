@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import { hasModule } from "../_shared/access.ts";
+import { ExternalRaterError, findOrCreateExternal, linkExternalToEmployee } from "../_shared/externalRaters.ts";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 
 const corsHeaders = {
@@ -8,7 +9,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Client-Info, Apikey",
 };
 
-const CLASSIFICATIONS = ["immediate_manager", "direct_report", "peer", "self"] as const;
+const CLASSIFICATIONS = [
+  "self",
+  "immediate_manager",
+  "skip_level_manager",
+  "direct_report",
+  "skip_level_report",
+  "peer",
+  "external",
+] as const;
 type Classification = (typeof CLASSIFICATIONS)[number];
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -65,6 +74,7 @@ type Input = {
   classification: Classification;
   assessorEmail: string | null;
   assessorName: string | null;
+  organisation: string | null;
 };
 
 function parseInput(body: unknown): Input {
@@ -89,6 +99,8 @@ function parseInput(body: unknown): Input {
 
   const name = typeof raw.assessor_name === "string" ? raw.assessor_name.trim() : "";
   if (name.length > 200) throw new RequestError(400, "The assessor's name is too long.");
+  const organisation = typeof raw.organisation === "string" ? raw.organisation.trim() : "";
+  if (organisation.length > 100) throw new RequestError(400, "The organisation can be up to 100 characters.");
 
   return {
     cycleId,
@@ -96,6 +108,7 @@ function parseInput(body: unknown): Input {
     classification: classification as Classification,
     assessorEmail: email || null,
     assessorName: name || null,
+    organisation: organisation || null,
   };
 }
 
@@ -143,7 +156,7 @@ async function createAccount(admin: Admin, email: string, fullName: string): Pro
     full_name: fullName,
     email,
     role: "employee",
-    must_change_password: true,
+    must_change_password: false,
   });
   if (profileError) {
     await admin.auth.admin.deleteUser(data.user.id);
@@ -188,14 +201,27 @@ async function resolveAssessor(admin: Admin, talent: TalentRow, managerIds: stri
     throw new RequestError(400, "The talent cannot be an assessor in this role.");
   }
 
+  if (input.classification === "external") {
+    // External raters never get a usable account; they answer by secure link.
+    const rater = await findOrCreateExternal(admin, {
+      email: input.assessorEmail,
+      fullName: input.assessorName ?? "",
+      organisation: input.organisation,
+    });
+    return { id: rater.id, email: rater.email, fullName: rater.fullName, needsActivation: true };
+  }
+
   const { data: existing, error } = await admin
     .from("profiles")
-    .select("id, email, full_name, activated_at")
+    .select("id, email, full_name, activated_at, person_type")
     .eq("email", input.assessorEmail)
     .maybeSingle();
   if (error) throw new Error(`Could not look up assessor: ${error.message}`);
 
   if (existing) {
+    if (existing.person_type === "external") {
+      throw new RequestError(400, "This is an external rater. Choose the External type for them.");
+    }
     if (managerIds.includes(existing.id)) {
       throw new RequestError(400, "The immediate manager uses the Immediate manager type.");
     }
@@ -231,17 +257,14 @@ async function sendInvite(
     const response = await fetch(`${supabaseUrl}/functions/v1/send-email`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-internal-secret": internalSecret },
-      body: JSON.stringify(
-        assessor.needsActivation
-          ? { type: "account_invite", recipient_email: assessor.email }
-          : {
-              type: "invite",
-              recipient_email: assessor.email,
-              assignment_id: assignmentId,
-              cycle_id: cycleId,
-              talent_id: talentId,
-            },
-      ),
+      // The invite carries the secure link for anyone without an active account.
+      body: JSON.stringify({
+        type: "invite",
+        recipient_email: assessor.email,
+        assignment_id: assignmentId,
+        cycle_id: cycleId,
+        talent_id: talentId,
+      }),
     });
     if (!response.ok) {
       console.error(`Invite email responded with status ${response.status}`);
@@ -289,6 +312,7 @@ Deno.serve(async (req) => {
         talent_id: input.talentId,
         assessor_id: assessor.id,
         classification: input.classification,
+        origin: input.classification === "external" ? "external" : "manual",
       })
       .select("id")
       .single();
@@ -317,7 +341,19 @@ Deno.serve(async (req) => {
       throw new Error(`Could not record the change: ${auditError.message}`);
     }
 
+    if (input.classification === "external") {
+      // Keep them on the employee so they carry over to future cycles.
+      await linkExternalToEmployee(admin, talent.profile_id, assessor.id, caller.id);
+    }
+
+    // Draft cycles send invitations when they open.
+    if (cycleStatus !== "open") {
+      return json({ assignment_id: assignment.id, email_sent: false, waiting_for_open: true }, 201);
+    }
     const emailSent = await sendInvite(input.cycleId, input.talentId, assignment.id, assessor);
+    if (emailSent) {
+      await admin.from("assignments").update({ last_reminded_at: new Date().toISOString() }).eq("id", assignment.id);
+    }
 
     return json(
       {
@@ -327,7 +363,7 @@ Deno.serve(async (req) => {
       201,
     );
   } catch (error) {
-    if (error instanceof RequestError) return json({ error: error.message }, error.status);
+    if (error instanceof RequestError || error instanceof ExternalRaterError) return json({ error: error.message }, error.status);
     console.error("invite-assessor failed:", error instanceof Error ? error.message : error);
     return json({ error: "Something went wrong while adding this assessor. Please try again." }, 500);
   }

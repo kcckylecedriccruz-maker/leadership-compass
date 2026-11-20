@@ -103,3 +103,4 @@
 - Never send names: nameScrubber() on free text, Pseudonyms ([P3] codes) on data, restore() after the answer.
 - Tables: ai_person_summaries, ai_cycle_insights (admin read only; writes via the function). competencies.help jsonb {plain, looks_like[], not_like[], think_about}.
 - restart_cycle clears AI rows; delete_cycle cascades.
+- AI provider: _shared/ai.ts picks AI_PROVIDER (gemini default, claude optional). Gemini = Interactions API REST (POST /v1beta/interactions, x-goog-api-key, Api-Revision 2026-05-20, response_format json schema, generation_config.thinking_level); text from steps[type=model_output].content[type=text]. 429 = free limit reached.

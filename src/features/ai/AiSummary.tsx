@@ -41,7 +41,7 @@ export function AiSummary({ cycleId, talentId }: { cycleId: string; talentId: st
             AI feedback summary
           </h2>
           <p className="max-w-2xl text-sm text-ink-muted">
-            Claude reads this person’s scores and written feedback (names removed) and drafts themes and a 30/60/90-day plan.
+            The AI reads this person’s scores and written feedback (names removed) and drafts themes and a 30/60/90-day plan.
             Visible to administrators only. Check it against the report before using it.
           </p>
         </div>

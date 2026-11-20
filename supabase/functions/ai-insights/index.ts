@@ -1,16 +1,16 @@
-// AI features powered by Claude.
+// AI features (Gemini by default, Claude optional; see _shared/ai.ts).
 //
 // Admins:  person_summary, cycle_insights, explain_draft, save_help, ask, compare_cycles, person_trend
 // Managers (reports shared with them): team_insights
 // Anyone filling a form (signed in or by secure link): coach_note
 //
-// Names never reach Claude: free text is scrubbed of everyone's names and people in data are replaced by codes
-// like [P3], which are swapped back to names after Claude answers.
+// Names never reach the AI service: free text is scrubbed of everyone's names and people in data are replaced by codes
+// like [P3], which are swapped back to names after the AI answers.
 
 import { createClient } from "npm:@supabase/supabase-js@2.57.4";
 import type { SupabaseClient } from "npm:@supabase/supabase-js@2.57.4";
 import { AccessError, type Caller, callerFromRequest } from "../_shared/access.ts";
-import { AiError, askJson, MODEL, S } from "../_shared/claude.ts";
+import { AiError, askJson, modelName, S } from "../_shared/ai.ts";
 import { LinkError, resolveLink } from "../_shared/evaluationLinks.ts";
 import {
   type Answer,
@@ -111,7 +111,7 @@ ${JSON.stringify(input)}
 
   const { error } = await admin
     .from("ai_person_summaries")
-    .upsert({ cycle_id: cycleId, talent_id: talentId, content, model: MODEL, generated_by: caller.id, generated_at: new Date().toISOString() }, { onConflict: "cycle_id,talent_id" });
+    .upsert({ cycle_id: cycleId, talent_id: talentId, content, model: modelName("high"), generated_by: caller.id, generated_at: new Date().toISOString() }, { onConflict: "cycle_id,talent_id" });
   if (error) throw new Error(`Could not save the summary: ${error.message}`);
   await audit(admin, caller.id, "ai.person_summary", talentId, { cycle_id: cycleId });
   return { content, generated_at: new Date().toISOString() };
@@ -278,7 +278,7 @@ ${JSON.stringify(notes)}
   const stored = { ...content, notes_used: notesSent, answers_total: notesTotal };
   const { error } = await admin
     .from("ai_cycle_insights")
-    .upsert({ cycle_id: cycleId, content: stored, model: MODEL, generated_by: caller.id, generated_at: new Date().toISOString() }, { onConflict: "cycle_id" });
+    .upsert({ cycle_id: cycleId, content: stored, model: modelName("high"), generated_by: caller.id, generated_at: new Date().toISOString() }, { onConflict: "cycle_id" });
   if (error) throw new Error(`Could not save the insights: ${error.message}`);
   await audit(admin, caller.id, "ai.cycle_insights", cycleId, {});
   return { content: stored, generated_at: new Date().toISOString() };

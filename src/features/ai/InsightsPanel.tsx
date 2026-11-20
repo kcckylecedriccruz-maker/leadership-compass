@@ -56,7 +56,7 @@ async function loadBasics(): Promise<Basics> {
   };
 }
 
-/** Administrators: AI insights across the organisation (Claude, names removed before sending). */
+/** Administrators: AI insights across the organisation (names removed before sending). */
 export function InsightsPanel() {
   const { state } = useAsyncData(loadBasics);
   const [tab, setTab] = useState<Tab>('cycle');
@@ -69,7 +69,7 @@ export function InsightsPanel() {
           Insights
         </h2>
         <p className="text-sm leading-relaxed text-ink-muted">
-          AI-generated with Claude. Names are removed before anything is sent; people appear as codes and are named again here.
+          AI-generated (Google Gemini). Names are removed before anything is sent; people appear as codes and are named again here.
           AI can be wrong, so check important conclusions against the reports.
         </p>
       </div>
@@ -495,7 +495,7 @@ function FormHelpTool() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="max-w-2xl text-sm text-ink-muted">
-          The “What does this mean?” panel under each item in the feedback form. Claude drafts it in plain English; you review
+          The “What does this mean?” panel under each item in the feedback form. The AI drafts it in plain English; you review
           and edit. {state.status === 'ready' && `${withHelp} of ${items.length} items have help.`}
         </p>
         <RunButton busy={busy} label={withHelp > 0 ? 'Redraft all with AI' : 'Draft all with AI'} onClick={() => void draftAll()} />

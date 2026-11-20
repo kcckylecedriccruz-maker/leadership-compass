@@ -128,18 +128,53 @@ async function addExternal(admin: Admin, caller: Caller, body: Body) {
 }
 
 /** An outside person to be evaluated by employees (administrators only). Evaluators are chosen afterwards. */
+/** Outside people who are only assessed need no email; they get a placeholder that is never emailed. */
+const NO_EMAIL_DOMAIN = "@no-email.invalid";
+
 async function addOutsidePerson(admin: Admin, caller: Caller, body: Body) {
   if (caller.role !== "admin") throw new AccessError(403, "Only an administrator can add outside people to evaluate.");
-  const person = await findOrCreateExternal(admin, {
-    email: email(body),
-    fullName: text(body, "full_name", 200, true),
-    organisation: text(body, "organisation", 100) || null,
-  });
+  const fullName = text(body, "full_name", 200, true);
+  const organisation = text(body, "organisation", 100) || null;
+  const hasEmail = typeof body.email === "string" && body.email.trim() !== "";
+  let person: { id: string; created: boolean };
+  if (hasEmail) {
+    person = await findOrCreateExternal(admin, { email: email(body), fullName, organisation });
+  } else {
+    // No login and no real email: they are only ever assessed, never contacted.
+    const id = crypto.randomUUID();
+    const { error: insertError } = await admin.from("profiles").insert({
+      id,
+      full_name: fullName,
+      email: `outside-${id}${NO_EMAIL_DOMAIN}`,
+      role: "employee",
+      person_type: "external",
+      organisation,
+      must_change_password: false,
+    });
+    if (insertError) throw new Error(`Could not add the outside person: ${insertError.message}`);
+    person = { id, created: true };
+  }
   // A talents row makes them someone who can be assessed.
   const { error } = await admin.from("talents").upsert({ profile_id: person.id }, { onConflict: "profile_id", ignoreDuplicates: true });
   if (error) throw new Error(`Could not set up the outside person: ${error.message}`);
   await audit(admin, caller, "person.outside_added", "profiles", person.id, {});
   return { id: person.id, created: person.created };
+}
+
+/** Gives an outside person a real email so they can also give feedback (by secure link). Administrators only. */
+async function setOutsideEmail(admin: Admin, caller: Caller, body: Body) {
+  if (caller.role !== "admin") throw new AccessError(403, "Only an administrator can change an outside person's email.");
+  const personId = id(body, "profile_id");
+  const address = email(body);
+  const { data: person } = await admin.from("profiles").select("id, person_type, email").eq("id", personId).maybeSingle();
+  const row = person as { id: string; person_type: string; email: string } | null;
+  if (!row || row.person_type !== "external") throw new AccessError(404, "That outside person could not be found.");
+  const { data: taken } = await admin.from("profiles").select("id").eq("email", address).neq("id", personId).maybeSingle();
+  if (taken) throw new AccessError(409, `${address} is already used by someone else.`);
+  const { error } = await admin.from("profiles").update({ email: address }).eq("id", personId);
+  if (error) throw new Error(`Could not save the email: ${error.message}`);
+  await audit(admin, caller, "person.outside_email_set", "profiles", personId, {});
+  return { id: personId };
 }
 
 async function removeExternal(admin: Admin, caller: Caller, body: Body) {
@@ -211,6 +246,8 @@ Deno.serve(async (req) => {
         return json(await quickAddEmployee(admin, caller, body), 200);
       case "add_outside_person":
         return json(await addOutsidePerson(admin, caller, body), 200);
+      case "set_outside_email":
+        return json(await setOutsideEmail(admin, caller, body), 200);
       case "add_external":
         return json(await addExternal(admin, caller, body), 200);
       case "remove_external":

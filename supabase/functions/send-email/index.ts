@@ -364,6 +364,10 @@ function parsePayload(body: unknown): ParseResult {
   if (!recipientEmail || !EMAIL_PATTERN.test(recipientEmail) || recipientEmail.length > 254) {
     return { ok: false, error: "recipient_email must be a valid email address." };
   }
+  // Outside people who are only assessed, and deleted accounts, have placeholder addresses that are never emailed.
+  if (/@(no-email|deleted)\.invalid$/.test(recipientEmail)) {
+    return { ok: false, error: "This person has no email address." };
+  }
 
   const assignmentId = optionalString(raw.assignment_id);
   const cycleId = optionalString(raw.cycle_id);

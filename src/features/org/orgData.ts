@@ -226,7 +226,7 @@ export function revokeEvaluationLink(profileId: string, cycleId: string): Promis
 }
 
 /** An outside person to be evaluated by employees (administrators only). */
-export function addOutsidePerson(input: { full_name: string; email: string; organisation: string }): Promise<ManageResult> {
+export function addOutsidePerson(input: { full_name: string; email: string | null; organisation: string }): Promise<ManageResult> {
   return managePeople('add_outside_person', input);
 }
 
@@ -238,4 +238,14 @@ export async function addOutsideEvaluator(externalId: string, evaluatorId: strin
 export async function removeOutsideEvaluator(externalId: string, evaluatorId: string): Promise<Result> {
   const { error } = await supabase.rpc('remove_outside_evaluator', { p_external: externalId, p_evaluator: evaluatorId });
   return errorResult(error);
+}
+
+/** Outside people who are only assessed have a placeholder address and are never emailed. */
+export function hasRealEmail(email: string): boolean {
+  return !/@(no-email|deleted)\.invalid$/.test(email);
+}
+
+/** Gives an outside person a real email so they can also give feedback by secure link. */
+export function setOutsideEmail(profileId: string, email: string): Promise<ManageResult> {
+  return managePeople('set_outside_email', { profile_id: profileId, email });
 }

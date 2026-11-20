@@ -4,7 +4,9 @@ import { Notice } from '@/components/Notice';
 import {
   addOutsideEvaluator,
   addOutsidePerson,
+  hasRealEmail,
   removeOutsideEvaluator,
+  setOutsideEmail,
   type OrgData,
   type OrgPerson,
 } from '@/features/org/orgData';
@@ -26,10 +28,11 @@ export function OutsidePeople({ org, onChanged }: { org: OrgData; onChanged: () 
 
   async function add() {
     if (!name.trim()) return setMessage({ tone: 'error', text: 'Enter their name.' });
-    if (!EMAIL_PATTERN.test(email.trim())) return setMessage({ tone: 'error', text: 'Enter a valid email address.' });
+    // Email is optional: it is only needed if they will also give feedback.
+    if (email.trim() && !EMAIL_PATTERN.test(email.trim())) return setMessage({ tone: 'error', text: 'Enter a valid email address, or leave it empty.' });
     setBusy('add');
     setMessage(null);
-    const result = await addOutsidePerson({ full_name: name.trim(), email: email.trim(), organisation: organisation.trim() });
+    const result = await addOutsidePerson({ full_name: name.trim(), email: email.trim() || null, organisation: organisation.trim() });
     setBusy(null);
     if (!result.ok) return setMessage({ tone: 'error', text: result.message });
     setMessage({ tone: 'info', text: `${name.trim()} was added. Now choose the employees who evaluate them.` });
@@ -51,8 +54,8 @@ export function OutsidePeople({ org, onChanged }: { org: OrgData; onChanged: () 
           <p className="max-w-3xl text-sm text-ink-muted">
             Contractors, partners or client contacts. Choose the employees who evaluate each one; it carries over to every
             cycle with External people switched on. They do no self-assessment, never get an account, and their report is
-            for administrators (you can share it with an employee). Outside people can also give feedback to employees as
-            external raters.
+            for administrators (you can share it with an employee). An email is only needed if they will also give feedback
+            to employees as external raters.
           </p>
         </div>
         {!adding && (
@@ -73,7 +76,14 @@ export function OutsidePeople({ org, onChanged }: { org: OrgData; onChanged: () 
           noValidate
         >
           <input className="field-input" placeholder="Full name" value={name} maxLength={200} onChange={(e) => setName(e.target.value)} />
-          <input className="field-input" type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" />
+          <input
+            className="field-input"
+            type="email"
+            placeholder="Email (only if they'll give feedback)"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
+          />
           <input
             className="field-input"
             placeholder="Organisation (optional)"
@@ -149,7 +159,10 @@ function OutsiderRow({ org, person, onChanged }: { org: OrgData; person: OrgPers
     <li className="space-y-3 rounded-xl border border-line p-4">
       <div>
         <p className="font-semibold">{person.full_name}</p>
-        <p className="text-xs text-ink-muted">{[person.organisation, person.email].filter(Boolean).join(' · ')}</p>
+        <p className="text-xs text-ink-muted">
+          {[person.organisation, hasRealEmail(person.email) ? person.email : 'No email (only being assessed)'].filter(Boolean).join(' · ')}
+        </p>
+        {!hasRealEmail(person.email) && <AddEmail person={person} onChanged={onChanged} />}
         {ratesFor.length > 0 && <p className="mt-1 text-xs text-ink-muted">Also gives feedback to: {ratesFor.join(', ')}</p>}
       </div>
       <div className="space-y-2">
@@ -198,5 +211,61 @@ function OutsiderRow({ org, person, onChanged }: { org: OrgData; person: OrgPers
       </div>
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
     </li>
+  );
+}
+
+/** An email is only needed when the outside person will also give feedback (as an external rater). */
+function AddEmail({ person, onChanged }: { person: OrgPerson; onChanged: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  if (!open) {
+    return (
+      <button type="button" className="mt-1 text-xs font-semibold text-primary underline underline-offset-4" onClick={() => setOpen(true)}>
+        Add email so they can also give feedback
+      </button>
+    );
+  }
+
+  async function save() {
+    if (!EMAIL_PATTERN.test(value.trim())) return setError('Enter a valid email address.');
+    setBusy(true);
+    setError(null);
+    const result = await setOutsideEmail(person.id, value.trim());
+    setBusy(false);
+    if (!result.ok) return setError(result.message);
+    setOpen(false);
+    onChanged();
+  }
+
+  return (
+    <form
+      className="mt-2 flex flex-wrap gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void save();
+      }}
+      noValidate
+    >
+      <input
+        className="field-input min-w-0 flex-1"
+        type="email"
+        placeholder="Their email"
+        value={value}
+        onChange={(event) => setValue(event.target.value)}
+        autoComplete="off"
+        aria-label={`Email for ${person.full_name}`}
+      />
+      <button type="submit" className="btn-secondary px-3 py-2" disabled={busy}>
+        {busy && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
+        Save email
+      </button>
+      <button type="button" className="btn-secondary px-3 py-2" onClick={() => setOpen(false)} disabled={busy}>
+        Cancel
+      </button>
+      {error && <p className="w-full text-xs text-danger">{error}</p>}
+    </form>
   );
 }

@@ -21,14 +21,14 @@ type LinkPerson = {
 
 type AssessorRow = {
   status: string;
-  assessor: { id: string; full_name: string; email: string; person_type: string; activated_at: string | null } | null;
+  assessor: { id: string; full_name: string; email: string; person_type: string; activated_at: string | null; is_active: boolean } | null;
 };
 
 async function loadLinkPeople(cycleId: string): Promise<LinkPerson[]> {
   const [assignments, links] = await Promise.all([
     supabase
       .from('assignments')
-      .select('status, assessor:profiles!assessor_id(id, full_name, email, person_type, activated_at)')
+      .select('status, assessor:profiles!assessor_id(id, full_name, email, person_type, activated_at, is_active)')
       .eq('cycle_id', cycleId),
     supabase.from('evaluation_links').select('profile_id, last_sent_at, last_used_at, revoked_at').eq('cycle_id', cycleId),
   ]);
@@ -41,7 +41,8 @@ async function loadLinkPeople(cycleId: string): Promise<LinkPerson[]> {
   const people = new Map<string, LinkPerson>();
   for (const row of (assignments.data ?? []) as unknown as AssessorRow[]) {
     const a = row.assessor;
-    if (!a || (a.person_type !== 'external' && a.activated_at)) continue;
+    // Deactivated people get no emails or links; people with an account sign in instead.
+    if (!a || !a.is_active || (a.person_type !== 'external' && a.activated_at)) continue;
     const link = linkBy.get(a.id);
     const entry = people.get(a.id) ?? {
       id: a.id,
@@ -58,7 +59,7 @@ async function loadLinkPeople(cycleId: string): Promise<LinkPerson[]> {
     if (row.status === 'submitted') entry.submitted += 1;
     people.set(a.id, entry);
   }
-  return [...people.values()].sort((x, y) => x.name.localeCompare(y.name));
+  return [...people.values()].sort((x, y) => Number(y.external) - Number(x.external) || x.name.localeCompare(y.name));
 }
 
 /** People in an open cycle who answer by secure link: send a fresh link (old ones stop working) or switch it off. */
@@ -70,6 +71,8 @@ export function FeedbackLinks({ cycleId, canManage }: { cycleId: string; canMana
   const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
 
   if (state.status !== 'ready' || state.data.length === 0) return null;
+  const externals = state.data.filter((p) => p.external).length;
+  const noAccount = state.data.length - externals;
 
   async function act(person: LinkPerson, action: 'send' | 'revoke') {
     setBusy(person.id + action);
@@ -89,20 +92,22 @@ export function FeedbackLinks({ cycleId, canManage }: { cycleId: string; canMana
       <button type="button" className="flex w-full items-center gap-2 text-left font-semibold" aria-expanded={open} onClick={() => setOpen(!open)}>
         {open ? <ChevronDown className="h-4 w-4" aria-hidden="true" /> : <ChevronRight className="h-4 w-4" aria-hidden="true" />}
         <Link2 className="h-4 w-4 text-primary" aria-hidden="true" />
-        {state.data.length} {state.data.length === 1 ? 'person answers' : 'people answer'} by secure link
+        Secure links: {externals} external rater{externals === 1 ? '' : 's'}, {noAccount} employee{noAccount === 1 ? '' : 's'} without an account
       </button>
       {open && (
         <div className="mt-3 space-y-3">
           <p className="text-xs text-ink-muted">
-            External raters and people without an active account. Their invitations and reminders carry a private link that
-            works until the cycle closes.
+            Everyone here answers by private email link instead of signing in: external raters, and employees who have not
+            activated their account yet. Invitations and reminders carry the link; it works until the cycle closes. To add an
+            external rater, open the employee in <span className="font-semibold">Org structure</span> and use{' '}
+            <span className="font-semibold">External raters → Add</span>.
           </p>
           <ul className="divide-y divide-line">
             {state.data.map((person) => (
               <li key={person.id} className="flex flex-wrap items-center gap-3 py-2">
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-semibold">
-                    {person.name} {person.external && <Badge tone="neutral">External</Badge>}
+                    {person.name} <Badge tone="neutral">{person.external ? 'External rater' : 'No account yet'}</Badge>
                   </span>
                   <span className="block truncate text-xs text-ink-muted">
                     {person.submitted}/{person.forms} submitted

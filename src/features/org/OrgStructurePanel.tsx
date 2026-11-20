@@ -43,6 +43,7 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
     noManager: roots.length,
     excluded: active.filter((p) => p.exclude_rated || p.exclude_rater || p.exclude_self).length,
     pendingPeers: org?.peers.filter((l) => l.status === 'suggested').length ?? 0,
+    externals: org ? new Set([...org.externalsOf.values()].flat().map((p) => p.id)).size : 0,
   };
 
   function toggle(id: string) {
@@ -126,12 +127,13 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
         />
       )}
 
-      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <dl className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: 'People', value: stats.people },
           { label: 'Top of the tree', value: stats.noManager },
           { label: 'With exclusions', value: stats.excluded },
           { label: 'Peer suggestions waiting', value: stats.pendingPeers },
+          { label: 'External raters', value: stats.externals },
         ].map((item) => (
           <div key={item.label} className="rounded-card border border-line bg-surface p-4">
             <dt className="text-xs font-semibold text-ink-muted">{item.label}</dt>
@@ -194,7 +196,8 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
             ) : (
               <div className="rounded-card border border-dashed border-line bg-surface p-8 text-center text-sm text-ink-muted">
                 <UserRound className="mx-auto mb-2 h-6 w-6" aria-hidden="true" />
-                Select a person to see and change their reporting line, exclusions and peers.
+                Select a person to see and change their reporting line, exclusions, peers and external raters (clients,
+                partners or contractors who give them feedback).
               </div>
             )}
           </div>

@@ -22,6 +22,7 @@ export type ManagedUser = {
   position: string | null;
   /** Set while the account waits out its 3-day recovery window. */
   deletion_requested_at: string | null;
+  manager_id: string | null;
 };
 
 type Row = Record<string, unknown>;
@@ -94,6 +95,7 @@ export async function loadManagedUsers(): Promise<ManagedUser[]> {
       department: text(row.department),
       position: text(row.position),
       deletion_requested_at: text(row.deletion_requested_at),
+      manager_id: text(row.manager_id),
     }));
 }
 

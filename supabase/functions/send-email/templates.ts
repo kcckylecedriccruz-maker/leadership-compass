@@ -14,6 +14,8 @@ export const EMAIL_KINDS = [
   "talent_added",
   "test_email",
   "evaluation_link",
+  "email_change_code",
+  "email_changed",
 ] as const;
 
 export type EmailKind = (typeof EMAIL_KINDS)[number];
@@ -89,6 +91,19 @@ export type EmailData =
       recipientName: string | null;
       recipientEmail: string;
       temporaryPassword: string;
+      loginUrl: string;
+    }
+  | {
+      kind: "email_change_code";
+      recipientName: string | null;
+      code: string;
+    }
+  | {
+      kind: "email_changed";
+      recipientName: string | null;
+      oldEmail: string;
+      newEmail: string;
+      changedBy: "self" | "admin";
       loginUrl: string;
     }
   | {
@@ -266,6 +281,40 @@ export function renderEmail(data: EmailData): RenderedEmail {
         table: null,
         button: { label: "Sign in", url: data.loginUrl },
         footer: [`Please complete your feedback by ${formatDate(data.closesAt)}.`],
+        lockedNote: true,
+      };
+
+    case "email_change_code":
+      return {
+        subject: `Confirm your new Leadership Compass email: ${data.code}`,
+        paragraphs: [
+          greeting(data.recipientName),
+          "Use this 6-digit code to confirm this address as your new sign-in email. The code expires in 15 minutes.",
+        ],
+        details: [["Confirmation code", data.code]],
+        table: null,
+        button: null,
+        footer: ["If you did not ask to change your email, you can ignore this email; nothing changes."],
+        lockedNote: true,
+      };
+
+    case "email_changed":
+      return {
+        subject: "Your Leadership Compass sign-in email was changed",
+        paragraphs: [
+          greeting(data.recipientName),
+          data.changedBy === "admin"
+            ? "An administrator changed the sign-in email for your Leadership Compass account."
+            : "The sign-in email for your Leadership Compass account was changed.",
+          "From now on, sign in and receive emails at the new address.",
+        ],
+        details: [
+          ["Old email", data.oldEmail],
+          ["New email", data.newEmail],
+        ],
+        table: null,
+        button: { label: "Sign in", url: data.loginUrl },
+        footer: ["If you did not expect this change, contact your administrator straight away."],
         lockedNote: true,
       };
 

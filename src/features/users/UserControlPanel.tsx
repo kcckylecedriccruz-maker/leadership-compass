@@ -12,11 +12,13 @@ import {
   UserRound,
   Users,
   UserX,
+  Pencil,
 } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { Modal } from '@/components/Modal';
 import { Notice } from '@/components/Notice';
 import { AccountDeletionButton, DeletionBadge } from '@/features/users/AccountDeletion';
+import { EditUserDialog } from '@/features/users/EditUserDialog';
 import { GroupsDialog } from '@/features/users/GroupsDialog';
 import {
   createUser,
@@ -98,6 +100,7 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
   const [adding, setAdding] = useState(false);
   const [flash, setFlash] = useState<string | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ManagedUser | null>(null);
   const actorIsAdmin = currentUser.role === 'admin';
 
   const users = useMemo(() => (state.status === 'ready' ? state.data : []), [state]);
@@ -325,9 +328,16 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
                         Resend invite
                       </button>
                     )}
-                    <button type="button" className="btn-secondary px-3 py-2" onClick={() => setPending({ user, kind: 'rename' })}>
-                      Rename
-                    </button>
+                    {actorIsAdmin ? (
+                      <button type="button" className="btn-secondary px-3 py-2" onClick={() => setEditing(user)}>
+                        <Pencil className="h-4 w-4" aria-hidden="true" />
+                        Edit
+                      </button>
+                    ) : (
+                      <button type="button" className="btn-secondary px-3 py-2" onClick={() => setPending({ user, kind: 'rename' })}>
+                        Rename
+                      </button>
+                    )}
                     <button
                       type="button"
                       className="btn-secondary px-3 py-2"
@@ -380,6 +390,19 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
             );
           })}
         </ul>
+      )}
+
+      {editing && (
+        <EditUserDialog
+          user={editing}
+          users={users}
+          groups={groups}
+          onClose={() => setEditing(null)}
+          onDone={(message) => {
+            setEditing(null);
+            finished(message);
+          }}
+        />
       )}
 
       {adding && (

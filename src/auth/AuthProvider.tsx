@@ -15,6 +15,8 @@ export type AuthContextValue = {
   signOut: () => Promise<void>;
   changePassword: (newPassword: string) => Promise<string | null>;
   markTourSeen: () => Promise<void>;
+  /** Reflects a saved change (e.g. on My profile) without reloading. */
+  updateProfileLocally: (patch: Partial<Profile>) => void;
 };
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
@@ -197,6 +199,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
   }
 
+  function updateProfileLocally(patch: Partial<Profile>) {
+    setState((prev) => (prev.status === 'signed_in' ? { status: 'signed_in', profile: { ...prev.profile, ...patch } } : prev));
+  }
+
   return (
     <AuthContext.Provider
       value={{
@@ -206,6 +212,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         changePassword,
         markTourSeen,
+        updateProfileLocally,
       }}
     >
       {children}

@@ -12,6 +12,9 @@ export type EmailRequest = {
   activationCode: string | null;
   isTest?: boolean;
   testedType?: string | null;
+  oldEmail?: string | null;
+  newEmail?: string | null;
+  changedBy?: "self" | "admin" | null;
   checkResult?: string | null;
   senderFrom?: string | null;
 };
@@ -457,5 +460,32 @@ export async function prepareEmail(admin: Admin, appUrl: string, request: EmailR
       return prepareTestEmail(admin, appUrl, request);
     case "evaluation_link":
       return prepareEvaluationLink(admin, appUrl, request);
+    case "email_change_code":
+      if (!request.activationCode) return rejected(400, "A code is required.");
+      return {
+        outcome: "ready",
+        cycleId: null,
+        assignmentId: null,
+        data: {
+          kind: "email_change_code",
+          recipientName: (await loadRecipientName(admin, request.recipientEmail)) ?? null,
+          code: request.activationCode,
+        },
+      };
+    case "email_changed":
+      if (!request.oldEmail || !request.newEmail) return rejected(400, "Both email addresses are required.");
+      return {
+        outcome: "ready",
+        cycleId: null,
+        assignmentId: null,
+        data: {
+          kind: "email_changed",
+          recipientName: (await loadRecipientName(admin, request.newEmail)) ?? null,
+          oldEmail: request.oldEmail,
+          newEmail: request.newEmail,
+          changedBy: request.changedBy === "admin" ? "admin" : "self",
+          loginUrl: `${appUrl}/`,
+        },
+      };
   }
 }

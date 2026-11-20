@@ -11,6 +11,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { linkTokenFromPath } from '@/features/link/linkApi';
 import { EvaluationLinkPage } from '@/pages/EvaluationLinkPage';
+import { MyProfilePage } from '@/pages/MyProfilePage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
 import { WorkspacePage } from '@/pages/WorkspacePage';
 import { NotificationSettingsPage } from '@/features/notifications/NotificationSettingsPage';
@@ -82,6 +83,7 @@ function AppGate() {
   const { state, signOut } = useAuth();
   const [settingsLink] = useState(readSettingsLink);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [showSenderSettings, setShowSenderSettings] = useState(false);
   // Notifications and sender settings are for administrators only.
   const isAdmin = state.status === 'signed_in' && state.profile.role === 'admin';
@@ -94,13 +96,22 @@ function AppGate() {
     window.history.replaceState(null, '', window.location.pathname);
   }, [settingsLink.openSender, canOpenSender]);
 
+  function openProfile() {
+    setShowNotifications(false);
+    setShowSenderSettings(false);
+    setShowProfile(true);
+    window.scrollTo({ top: 0 });
+  }
+
   function openNotifications() {
+    setShowProfile(false);
     setShowSenderSettings(false);
     setShowNotifications(true);
     window.scrollTo({ top: 0 });
   }
 
   function backToHome() {
+    setShowProfile(false);
     setShowNotifications(false);
     setShowSenderSettings(false);
   }
@@ -117,8 +128,24 @@ function AppGate() {
         return <ChangePasswordPage />;
       }
       return (
-        <AppShell profile={state.profile} onOpenNotifications={isAdmin ? openNotifications : undefined}>
-          {showNotifications && isAdmin ? (
+        <AppShell
+          profile={state.profile}
+          onOpenNotifications={isAdmin ? openNotifications : undefined}
+          onOpenProfile={openProfile}
+        >
+          {showProfile ? (
+            <div className="space-y-8">
+              <button
+                type="button"
+                onClick={backToHome}
+                className="inline-flex items-center gap-2 text-sm font-semibold text-ink-muted transition-colors duration-200 hover:text-ink"
+              >
+                <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+                Back
+              </button>
+              <MyProfilePage profile={state.profile} />
+            </div>
+          ) : showNotifications && isAdmin ? (
             <div className="space-y-8">
               <button
                 type="button"

@@ -244,7 +244,7 @@ async function checkGmailDailyQuota(admin: SupabaseClient, config: Config, sende
   }
 }
 
-const ALWAYS_ON: EmailKind[] = ["invite", "account_activation", "temporary_password", "evaluation_link"];
+const ALWAYS_ON: EmailKind[] = ["invite", "account_activation", "temporary_password", "evaluation_link", "email_change_code", "email_changed"];
 const REMINDER_INTERVAL_FLOOR_DAYS = 1;
 
 async function profileIdForEmail(admin: SupabaseClient, email: string): Promise<string | null> {
@@ -427,8 +427,13 @@ function parsePayload(body: unknown): ParseResult {
   if (activationCode && !/^[0-9]{6}$/.test(activationCode)) {
     return { ok: false, error: "activation_code must be 6 digits." };
   }
-  if (emailKind === "account_activation" && !activationCode) {
-    return { ok: false, error: "activation_code is required for account_activation emails." };
+  if ((emailKind === "account_activation" || emailKind === "email_change_code") && !activationCode) {
+    return { ok: false, error: `activation_code is required for ${emailKind} emails.` };
+  }
+  const oldEmail = optionalString(raw.old_email)?.toLowerCase() ?? null;
+  const newEmail = optionalString(raw.new_email)?.toLowerCase() ?? null;
+  if (emailKind === "email_changed" && (!oldEmail || !newEmail)) {
+    return { ok: false, error: "old_email and new_email are required for email_changed emails." };
   }
 
   return {
@@ -441,6 +446,9 @@ function parsePayload(body: unknown): ParseResult {
       talentId,
       temporaryPassword,
       activationCode,
+      oldEmail,
+      newEmail,
+      changedBy: raw.changed_by === "admin" ? "admin" : "self",
     },
   };
 }

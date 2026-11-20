@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { BookOpen, LogOut, Settings2 } from 'lucide-react';
+import { BookOpen, LogOut, Settings2, UserRound } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { BrandMark } from '@/components/BrandMark';
 import { WelcomeTour } from '@/features/tour/WelcomeTour';
@@ -15,11 +15,13 @@ export function AppShell({
   profile,
   children,
   onOpenNotifications,
+  onOpenProfile,
 }: {
   profile: Profile;
   children: ReactNode;
   /** Only passed for administrators: the Notifications module is admin-only. */
   onOpenNotifications?: () => void;
+  onOpenProfile?: () => void;
 }) {
   const { signOut, markTourSeen } = useAuth();
   const [tourOpen, setTourOpen] = useState(profile.tour_seen_at === null);
@@ -50,6 +52,12 @@ export function AppShell({
               <p className="truncate text-sm font-semibold">{profile.full_name}</p>
               <p className="text-xs text-ink-muted">{roleLabel}</p>
             </div>
+            {onOpenProfile && (
+              <button type="button" onClick={onOpenProfile} className="btn-secondary shrink-0 px-3 py-2" aria-label="My profile">
+                <UserRound className="h-4 w-4" aria-hidden="true" />
+                <span className="hidden md:inline">My profile</span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setTourOpen(true)}

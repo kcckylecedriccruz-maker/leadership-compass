@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { MonitoringPanel } from '@/features/monitoring/MonitoringPanel';
+import { trackView } from '@/lib/telemetry';
 import { AuditTrailPanel } from '@/features/audit/AuditTrailPanel';
 import { AssignmentsPanel } from '@/features/assignments/AssignmentsPanel';
 import { CyclesPanel } from '@/features/cycles/CyclesPanel';
@@ -9,19 +11,22 @@ import { UserControlPanel } from '@/features/users/UserControlPanel';
 import { MODULE_LABELS, canEdit, canView, type Module, type Profile } from '@/lib/types';
 
 // The Org structure tab uses the 'talents' module key, so existing module access carries over.
-// Insights (AI) is for administrators only and is not a grantable module.
-type Section = Exclude<Module, 'settings' | 'people'> | 'insights';
+// Insights (AI) and Monitoring are for administrators only and are not grantable modules.
+type Section = Exclude<Module, 'settings' | 'people'> | 'insights' | 'monitoring';
 
-const WORKSPACE_SECTIONS: Exclude<Section, 'insights'>[] = ['dashboard', 'cycles', 'talents', 'assignments', 'users', 'audit'];
+const WORKSPACE_SECTIONS: Exclude<Section, 'insights' | 'monitoring'>[] = ['dashboard', 'cycles', 'talents', 'assignments', 'users', 'audit'];
 
 export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' }) {
   const isAdminUser = profile.role === 'admin';
   const sections: Section[] = [
     ...WORKSPACE_SECTIONS.filter((section) => canView(profile, section as Module)),
-    ...(isAdminUser ? (['insights'] as Section[]) : []),
+    ...(isAdminUser ? (['insights', 'monitoring'] as Section[]) : []),
   ];
   const [selected, setSelected] = useState<Section>(sections[0] ?? 'dashboard');
   const section = sections.includes(selected) ? selected : sections[0];
+  useEffect(() => {
+    if (section) trackView(`Workspace/${section}`);
+  }, [section]);
   const isAdmin = profile.role === 'admin';
 
   if (!section) {
@@ -49,8 +54,8 @@ export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' })
                 isSelected ? 'bg-surface text-ink shadow-sm' : 'text-ink-muted hover:text-ink'
               }`}
             >
-              {id === 'insights' ? 'Insights' : MODULE_LABELS[id]}
-              {id !== 'insights' && !canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
+              {id === 'insights' ? 'Insights' : id === 'monitoring' ? 'Monitoring' : MODULE_LABELS[id]}
+              {id !== 'insights' && id !== 'monitoring' && !canEdit(profile, id) && id !== 'dashboard' && id !== 'audit' && (
                 <span className="ml-1.5 text-xs font-normal text-ink-muted">(view)</span>
               )}
             </button>
@@ -67,6 +72,7 @@ export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' })
       {section === 'users' && <UserControlPanel currentUser={profile} canEdit={canEdit(profile, 'users')} />}
       {section === 'audit' && <AuditTrailPanel />}
       {section === 'insights' && <InsightsPanel />}
+      {section === 'monitoring' && <MonitoringPanel />}
     </div>
   );
 }

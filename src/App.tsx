@@ -10,6 +10,7 @@ import { ChangePasswordPage } from '@/pages/ChangePasswordPage';
 import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { linkTokenFromPath } from '@/features/link/linkApi';
+import { trackView } from '@/lib/telemetry';
 import { EvaluationLinkPage } from '@/pages/EvaluationLinkPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
@@ -40,6 +41,9 @@ function HomeViews({ profile }: { profile: Profile }) {
   const views = homeViews(profile);
   const [selected, setSelected] = useState(0);
   const active = views[selected] ?? views[0];
+  useEffect(() => {
+    if (active) trackView(active.label);
+  }, [active]);
 
   if (views.length === 1) return <>{active.content}</>;
 

@@ -1,4 +1,5 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { trackView } from '@/lib/telemetry';
 import { ChevronRight, Lock } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { BrandMark } from '@/components/BrandMark';
@@ -29,6 +30,7 @@ export function EvaluationLinkPage({ token }: { token: string }) {
   const load = useCallback(() => attempt(() => openLink(token)), [token]);
   const { state, reload } = useAsyncData(load);
   const [openId, setOpenId] = useState<string | null>(null);
+  useEffect(() => trackView(openId ? 'Link form' : 'Link forms list'), [openId]);
 
   return (
     <div className="min-h-screen bg-canvas">

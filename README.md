@@ -7,7 +7,9 @@ invited by email, and every employee rates 19 leadership competencies for themse
 the org structure. Each person gets a report with readiness, strengths, blind spots and a development plan. Feedback from peers and direct reports stays anonymous.
 
 - **Live app:** https://leadership-compass-formidea.netlify.app
-- **Product requirements:** *Leadership Compass — Product Requirements* (shared document)
+- **Product requirements:** [docs/PRD.md](docs/PRD.md) (1 page) and the shared document *Leadership Compass — Product Requirements*
+- **Specification and architecture:** [docs/spec.md](docs/spec.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · agent guides [CLAUDE.md](CLAUDE.md) and [.cursorrules](.cursorrules)
+- **Project deliverables:** [validation](docs/VALIDATION.md) · [reflection](docs/REFLECTION.md) · [demo script](docs/DEMO_SCRIPT.md) · [live test checklist](docs/TEST_CHECKLIST.md) · [v2 issue](docs/V2_ISSUE.md)
 - **Email setup:** [SETUP-EMAIL.md](SETUP-EMAIL.md)
 - **Rebuilding in Bolt:** [BOLT-BUILD-SCRIPT.md](BOLT-BUILD-SCRIPT.md) and [BOLT-PROMPT.md](BOLT-PROMPT.md)
 
@@ -355,9 +357,10 @@ privately rather than in a public issue.
 | `npm run typecheck` | TypeScript check |
 | `npm run lint` | ESLint |
 | `npm run build` | Production build in `dist/` |
+| `npm test` | Unit tests (Vitest): form answers, secure-link routing, AI privacy (names to codes), analytics privacy |
 | `npm run preview` | Serve the production build on port 4173 |
 
-Typecheck, lint and build must pass before every deploy. Edge functions can be checked with
+Typecheck, lint, tests and build must pass before every deploy. Edge functions can be checked with
 `npx deno check --node-modules-dir=none supabase/functions/*/index.ts`.
 
 **Conventions**
@@ -369,6 +372,12 @@ Typecheck, lint and build must pass before every deploy. Edge functions can be c
 - Server actions that change data write an `audit_log` row (`source: 'app'`, dotted action such as `user.role_changed`).
 - Account creation rules live in `supabase/functions/_shared/userCreation.ts`; keep Add user and bulk upload on them.
 - `.bolt/memory.md` records decisions for Bolt; keep it current when the rules change.
+
+## CI and monitoring
+
+- **GitHub Actions** ([.github/workflows/ci.yml](.github/workflows/ci.yml)): on every push and pull request, lint, TypeScript, unit tests, production build, and a Deno type check of every edge function.
+- **Uptime check** ([.github/workflows/uptime.yml](.github/workflows/uptime.yml)): every 6 hours (or on demand) checks that the live site and the server functions answer; a failed run emails the repository owner.
+- **In-app monitoring** (*Workspace → Monitoring*, admins): anonymous page views and browser errors (no names, user ids or link tokens), AI feature use and sign-ins. Data is kept 90 days.
 
 ## Troubleshooting
 

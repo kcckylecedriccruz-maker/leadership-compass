@@ -1,0 +1,25 @@
+# Cursor rules – Leadership Compass
+
+You are working on a React 18 + TypeScript + Vite + Tailwind single-page app with a Supabase (Postgres + Deno edge
+functions) back end. See CLAUDE.md, docs/spec.md and docs/ARCHITECTURE.md.
+
+## Code style
+- TypeScript strict; no `any` (use `unknown` and narrow). Functional React components with hooks.
+- Imports use the `@/` alias. Keep feature code in `src/features/<feature>/`.
+- Styling with Tailwind design tokens and the shared classes (btn-primary, btn-secondary, field-input, eyebrow).
+- User-facing text: plain, friendly English; explain what happens and what to do next.
+
+## Security and privacy
+- Never hardcode keys, tokens or passwords. Secrets live in Supabase function secrets.
+- Every new table: enable RLS, revoke defaults, add explicit policies. Privileged writes only via SECURITY DEFINER
+  functions (`SET search_path = ''`) or edge functions using the service role after checking the caller.
+- Do not log or send personal data to third parties. AI calls must go through `ai-insights` with names scrubbed.
+- Keep the audit trail append-only; write audit rows for data-changing actions.
+
+## Database
+- Never edit an applied migration; add a new timestamped file in supabase/migrations.
+
+## Quality
+- Before finishing: `npm run lint`, `npx tsc -b`, `npm test`, `npm run build` must pass; Deno check for edge functions.
+- Add unit tests (Vitest) for new pure logic.
+- Pin new dependencies to exact versions at least two weeks old.

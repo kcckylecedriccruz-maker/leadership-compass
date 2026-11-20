@@ -21,6 +21,12 @@ const STATUS_TONE: Record<string, BadgeTone> = {
 
 type OpenReport = { cycleId: string; talentId: string } | null;
 
+const CATEGORY_TITLES: Record<ReadinessRow['category'], { title: string; note: string | null }> = {
+  employee: { title: 'Employees', note: null },
+  outside: { title: 'Outside people', note: 'Contractors, partners or client contacts evaluated by employees. No self-assessment.' },
+  deleted: { title: 'Deleted people', note: 'Accounts that were deleted. Names were removed; their reports are kept here.' },
+};
+
 export function DashboardPanel() {
   const { state, reload } = useAsyncData(loadCycleOptions);
   const [selectedCycleId, setSelectedCycleId] = useState<string | null>(null);
@@ -111,15 +117,31 @@ function CycleBoard({
       {state.status === 'ready' && state.data.length === 0 && (
         <p className="text-sm text-ink-muted">No talents are assessed in this cycle yet.</p>
       )}
-      {state.status === 'ready' && state.data.length > 0 && (
-        <ul className="space-y-3">
-          {state.data.map((row) => (
-            <li key={row.talent_id}>
-              <TalentReadinessRow row={row} onOpen={() => onOpenReport(row.talent_id)} />
-            </li>
-          ))}
-        </ul>
-      )}
+      {state.status === 'ready' &&
+        (['employee', 'outside', 'deleted'] as const).map((category) => {
+          const rows = state.data.filter((row) => (row.category ?? 'employee') === category);
+          if (rows.length === 0) return null;
+          const heading = CATEGORY_TITLES[category];
+          return (
+            <section key={category} className="space-y-3" aria-label={heading.title}>
+              {(category !== 'employee' || state.data.some((row) => row.category !== 'employee')) && (
+                <div className="space-y-0.5 pt-2">
+                  <h3 className="text-lg">
+                    {heading.title} <span className="text-sm font-normal text-ink-muted">({rows.length})</span>
+                  </h3>
+                  {heading.note && <p className="text-xs text-ink-muted">{heading.note}</p>}
+                </div>
+              )}
+              <ul className="space-y-3">
+                {rows.map((row) => (
+                  <li key={row.talent_id}>
+                    <TalentReadinessRow row={row} onOpen={() => onOpenReport(row.talent_id)} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
     </div>
   );
 }

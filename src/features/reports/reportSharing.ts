@@ -75,8 +75,23 @@ export async function loadShareTargets(talentId: string): Promise<{ id: string; 
   const { data: talent } = await supabase.from('talents').select('profile_id').eq('id', talentId).maybeSingle();
   const profileId = (talent as { profile_id: string } | null)?.profile_id;
   if (!profileId) return [];
-  const { data: person } = await supabase.from('profiles').select('manager_id').eq('id', profileId).maybeSingle();
-  const managerId = (person as { manager_id: string | null } | null)?.manager_id;
+  const { data: person } = await supabase.from('profiles').select('manager_id, person_type').eq('id', profileId).maybeSingle();
+  const row = person as { manager_id: string | null; person_type: string } | null;
+  // An outside person's report can go to any active employee.
+  if (row?.person_type === 'external') {
+    const { data: employees } = await supabase
+      .from('profiles')
+      .select('id, full_name, position')
+      .eq('person_type', 'employee')
+      .eq('is_active', true)
+      .order('full_name');
+    return ((employees ?? []) as { id: string; full_name: string; position: string | null }[]).map((e) => ({
+      id: e.id,
+      name: e.full_name,
+      relation: e.position || 'Employee',
+    }));
+  }
+  const managerId = row?.manager_id;
   if (!managerId) return [];
   const { data: manager } = await supabase.from('profiles').select('id, full_name, manager_id').eq('id', managerId).maybeSingle();
   const m = manager as { id: string; full_name: string; manager_id: string | null } | null;

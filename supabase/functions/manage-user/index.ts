@@ -68,7 +68,15 @@ function parse(body: unknown): Request | null {
   }
 }
 
-type ProfileRow = { id: string; full_name: string; email: string; role: Role; is_active: boolean };
+type ProfileRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: Role;
+  is_active: boolean;
+  deletion_requested_at: string | null;
+  deleted_at: string | null;
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 200, headers: corsHeaders });
@@ -97,12 +105,16 @@ Deno.serve(async (req) => {
 
     const { data: targetData, error: targetError } = await admin
       .from("profiles")
-      .select("id, full_name, email, role, is_active")
+      .select("id, full_name, email, role, is_active, deletion_requested_at, deleted_at")
       .eq("id", request.userId)
       .maybeSingle();
     if (targetError) return json({ error: "Could not load that user." }, 500);
     const target = targetData as ProfileRow | null;
-    if (!target) return json({ error: "That user does not exist." }, 404);
+    if (!target || target.deleted_at) return json({ error: "That user does not exist." }, 404);
+    // An account waiting to be deleted must be recovered first; nothing else changes it in the meantime.
+    if (target.deletion_requested_at) {
+      return json({ error: "This account is scheduled for deletion. Recover it first." }, 409);
+    }
 
     const isSelf = target.id === actor.id;
     const removesAdmin =

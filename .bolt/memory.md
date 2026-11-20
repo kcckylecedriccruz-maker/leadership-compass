@@ -92,3 +92,8 @@
 - evaluation_links(profile_id, cycle_id, version, revoked_at): token = id.version.HMAC (key LINK_SIGNING_SECRET or the service role key); never store tokens. _shared/evaluationLinks.ts has currentLinkToken / rotateLink / revokeLink / resolveLink / usesLink.
 - People who use links: externals and anyone with activated_at null. send-email puts the link in invite, reminder and submission_confirmation for them; evaluation_link is a separate always-on email.
 - Public page /e/<token> (EvaluationLinkPage) reuses AssessmentForm with link actions. Submissions share _shared/submission.ts with submit-assessment; keep them in one place.
+
+## Outside people and account deletion (migration 20261120160000)
+- external_evaluators(external_id, evaluator_id): admin-only RPCs add_outside_evaluator / remove_outside_evaluator. Outside people get a talents row (manage-people add_outside_person), no self-assessment; evaluations are kind 'peer', origin 'external'. share_report allows any active employee for an outside person.
+- Deletion: request_account_deletion / cancel_account_deletion (admin, deactivated accounts only). purge_due_deletions() (service role) anonymises after 3 days; purge-deleted-accounts (hourly pg_cron, CRON_SECRET) then deletes the auth user. profiles no longer has an FK to auth.users. manage-user refuses any change while deletion is pending. Deleted profiles have deleted_at set and are hidden from User control.
+- readiness_ranking returns category employee | outside | deleted (ranked within each); the Dashboard groups by it.

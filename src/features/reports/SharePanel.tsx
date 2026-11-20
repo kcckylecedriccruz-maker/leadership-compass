@@ -4,7 +4,7 @@ import { Notice } from '@/components/Notice';
 import { loadShareTargets, loadSharesFor, shareReport, unshareReport, type ShareKind } from '@/features/reports/reportSharing';
 import { useAsyncData } from '@/lib/useAsyncData';
 
-/** Admin only: share this person's report with their immediate or skip-level manager. */
+/** Admin only: share a report with the immediate or skip-level manager (any employee for an outside person). */
 export function SharePanel({ cycleId, talentId }: { cycleId: string; talentId: string }) {
   const load = useCallback(async () => {
     const [targets, shares] = await Promise.all([loadShareTargets(talentId), loadSharesFor(cycleId, talentId)]);
@@ -38,8 +38,8 @@ export function SharePanel({ cycleId, talentId }: { cycleId: string; talentId: s
         </h2>
         <p className="text-sm text-ink-muted">
           Reports are private to administrators and to the person themselves after the cycle closes. Share a consolidated or
-          individual report with their immediate or skip-level manager. In individual reports, only the managers’ feedback
-          carries names; peer and direct-report feedback stays anonymous.
+          individual report with their immediate or skip-level manager, or, for an outside person, with any employee. In
+          individual reports, only the managers’ feedback carries names; other feedback stays anonymous.
         </p>
       </div>
 

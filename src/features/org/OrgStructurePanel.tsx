@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { ChevronDown, ChevronRight, Loader2, Network, Search, UserPlus, UserRound } from 'lucide-react';
 import { Badge } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
+import { useAuth } from '@/auth/useAuth';
 import { ExternalRaters } from '@/features/org/ExternalRaters';
+import { OutsidePeople } from '@/features/org/OutsidePeople';
 import { PeerManager } from '@/features/org/PeerManager';
 import { QuickAddDialog } from '@/features/org/QuickAddDialog';
 import {
@@ -21,6 +23,8 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
   const [query, setQuery] = useState('');
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [quickAdd, setQuickAdd] = useState(false);
+  const { state: auth } = useAuth();
+  const isAdmin = auth.status === 'signed_in' && auth.profile.role === 'admin';
   const [notice, setNotice] = useState<string | null>(null);
 
   const org = state.status === 'ready' ? state.data : null;
@@ -203,6 +207,7 @@ export function OrgStructurePanel({ canEdit = true }: { canEdit?: boolean }) {
           </div>
         </div>
       )}
+      {org && isAdmin && <OutsidePeople org={org} onChanged={reload} />}
     </section>
   );
 }

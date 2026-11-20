@@ -127,6 +127,21 @@ async function addExternal(admin: Admin, caller: Caller, body: Body) {
   return { id: raterId, added_to_open_cycles: added ?? 0 };
 }
 
+/** An outside person to be evaluated by employees (administrators only). Evaluators are chosen afterwards. */
+async function addOutsidePerson(admin: Admin, caller: Caller, body: Body) {
+  if (caller.role !== "admin") throw new AccessError(403, "Only an administrator can add outside people to evaluate.");
+  const person = await findOrCreateExternal(admin, {
+    email: email(body),
+    fullName: text(body, "full_name", 200, true),
+    organisation: text(body, "organisation", 100) || null,
+  });
+  // A talents row makes them someone who can be assessed.
+  const { error } = await admin.from("talents").upsert({ profile_id: person.id }, { onConflict: "profile_id", ignoreDuplicates: true });
+  if (error) throw new Error(`Could not set up the outside person: ${error.message}`);
+  await audit(admin, caller, "person.outside_added", "profiles", person.id, {});
+  return { id: person.id, created: person.created };
+}
+
 async function removeExternal(admin: Admin, caller: Caller, body: Body) {
   const employeeId = id(body, "employee_id");
   const raterId = id(body, "rater_id");
@@ -194,6 +209,8 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case "quick_add_employee":
         return json(await quickAddEmployee(admin, caller, body), 200);
+      case "add_outside_person":
+        return json(await addOutsidePerson(admin, caller, body), 200);
       case "add_external":
         return json(await addExternal(admin, caller, body), 200);
       case "remove_external":

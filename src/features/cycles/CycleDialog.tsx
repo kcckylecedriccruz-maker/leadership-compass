@@ -36,7 +36,7 @@ const INCLUDE_OPTIONS: { key: IncludeKey; label: string; help: string }[] = [
   { key: 'include_upward', label: 'Upward to manager', help: 'Employees assess their immediate manager' },
   { key: 'include_upward_skip', label: 'Upward to skip-level', help: 'Employees assess their manager’s manager' },
   { key: 'include_peers', label: 'Peers', help: 'Approved peers assess the employee' },
-  { key: 'include_external', label: 'External raters', help: 'Clients, partners or contractors added to an employee give feedback by secure link' },
+  { key: 'include_external', label: 'External people', help: 'External raters give employees feedback by secure link, and employees evaluate outside people' },
 ];
 
 const ALL_INCLUDED: Record<IncludeKey, boolean> = {

@@ -72,3 +72,6 @@ verify_jwt = false
 
 [functions.manage-people]
 verify_jwt = true
+
+[functions.purge-deleted-accounts]
+verify_jwt = false

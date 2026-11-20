@@ -16,6 +16,7 @@ import {
 import { Badge } from '@/components/Badge';
 import { Modal } from '@/components/Modal';
 import { Notice } from '@/components/Notice';
+import { AccountDeletionButton, DeletionBadge } from '@/features/users/AccountDeletion';
 import { GroupsDialog } from '@/features/users/GroupsDialog';
 import {
   createUser,
@@ -294,6 +295,7 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
                       ) : null,
                     )}
                     {user.is_active ? <Badge tone="success">Active</Badge> : <Badge tone="warning">Deactivated</Badge>}
+                    {user.deletion_requested_at && <DeletionBadge requestedAt={user.deletion_requested_at} />}
                     {user.is_active && !user.activated_at && <Badge tone="warning">Invite pending</Badge>}
                     {user.must_change_password && user.activated_at && <Badge tone="neutral">Password change pending</Badge>}
                   </div>
@@ -305,7 +307,12 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
                     {!user.is_active && user.deactivated_at ? ` · Deactivated ${when(user.deactivated_at)}` : ''}
                   </p>
                 </div>
-                {!locked && (
+                {!locked && user.deletion_requested_at && actorIsAdmin && (
+                  <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
+                    <AccountDeletionButton user={user} onDone={finished} />
+                  </div>
+                )}
+                {!locked && !user.deletion_requested_at && (
                   <div className="flex flex-wrap gap-2 lg:max-w-sm lg:justify-end">
                     {user.is_active && !user.activated_at && (
                       <button
@@ -359,10 +366,13 @@ export function UserControlPanel({ currentUser, canEdit = true }: { currentUser:
                         Deactivate
                       </button>
                     ) : (
-                      <button type="button" className="btn-secondary px-3 py-2" onClick={() => setPending({ user, kind: 'reactivate' })}>
-                        <UserCheck className="h-4 w-4" aria-hidden="true" />
-                        Reactivate
-                      </button>
+                      <>
+                        <button type="button" className="btn-secondary px-3 py-2" onClick={() => setPending({ user, kind: 'reactivate' })}>
+                          <UserCheck className="h-4 w-4" aria-hidden="true" />
+                          Reactivate
+                        </button>
+                        {actorIsAdmin && !isSelf && <AccountDeletionButton user={user} onDone={finished} />}
+                      </>
                     )}
                   </div>
                 )}

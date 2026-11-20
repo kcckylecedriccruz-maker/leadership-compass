@@ -20,6 +20,8 @@ export type ManagedUser = {
   groupIds: string[];
   department: string | null;
   position: string | null;
+  /** Set while the account waits out its 3-day recovery window. */
+  deletion_requested_at: string | null;
 };
 
 type Row = Record<string, unknown>;
@@ -75,7 +77,8 @@ export async function loadManagedUsers(): Promise<ManagedUser[]> {
   }
 
   return ((profiles.data ?? []) as Row[])
-    .filter((row) => isRole(row.role))
+    // Fully deleted people are anonymised and no longer managed here.
+    .filter((row) => isRole(row.role) && !row.deleted_at)
     .map((row) => ({
       id: String(row.id),
       full_name: String(row.full_name ?? ''),
@@ -90,6 +93,7 @@ export async function loadManagedUsers(): Promise<ManagedUser[]> {
       groupIds: groupsByProfile.get(String(row.id)) ?? [],
       department: text(row.department),
       position: text(row.position),
+      deletion_requested_at: text(row.deletion_requested_at),
     }));
 }
 

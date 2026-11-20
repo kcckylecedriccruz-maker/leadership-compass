@@ -28,6 +28,8 @@ export type ReadinessRow = {
   categories_above_one: number;
   status: string;
   rank: number;
+  /** employee, outside (evaluated outside person) or deleted (account removed; report kept). */
+  category: 'employee' | 'outside' | 'deleted';
 };
 
 export type NoteRow = {

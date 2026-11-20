@@ -38,6 +38,9 @@ export type OrgData = {
   reportsOf: Map<string, OrgPerson[]>;
   peers: PeerLink[];
   externalsOf: Map<string, OrgPerson[]>;
+  /** Outside people (external) and the employees who evaluate them. */
+  outsiders: OrgPerson[];
+  evaluatorsOf: Map<string, OrgPerson[]>;
 };
 
 type Row = Record<string, unknown>;
@@ -69,6 +72,7 @@ export function buildOrg(
   everyone: OrgPerson[],
   peers: PeerLink[],
   externalLinks: { employee_id: string; rater_id: string }[] = [],
+  evaluatorLinks: { external_id: string; evaluator_id: string }[] = [],
 ): OrgData {
   const all = [...everyone].sort((a, b) => a.full_name.localeCompare(b.full_name));
   const sorted = all.filter((p) => p.person_type === 'employee');
@@ -88,14 +92,25 @@ export function buildOrg(
     list.push(person);
     reportsOf.set(person.manager_id, list);
   }
-  return { people: sorted, byId, reportsOf, peers, externalsOf };
+  const evaluatorsOf = new Map<string, OrgPerson[]>();
+  for (const link of evaluatorLinks) {
+    const evaluator = byId.get(link.evaluator_id);
+    if (!evaluator) continue;
+    const list = evaluatorsOf.get(link.external_id) ?? [];
+    list.push(evaluator);
+    evaluatorsOf.set(link.external_id, list);
+  }
+  const outsiders = all.filter((p) => p.person_type === 'external' && p.is_active);
+  return { people: sorted, byId, reportsOf, peers, externalsOf, outsiders, evaluatorsOf };
 }
 
 export async function loadOrg(): Promise<OrgData> {
-  const [profiles, peers, externals] = await Promise.all([
+  const [profiles, peers, externals, evaluators] = await Promise.all([
     supabase.from('profiles').select(PERSON_COLUMNS).order('full_name'),
     supabase.from('peer_relationships').select('id, employee_id, peer_id, status, suggested_by, created_at'),
     supabase.from('external_raters').select('employee_id, rater_id'),
+    // Only administrators and Org structure viewers can read this; others simply get an empty list.
+    supabase.from('external_evaluators').select('external_id, evaluator_id'),
   ]);
   if (profiles.error) throw profiles.error;
   return buildOrg(
@@ -109,6 +124,7 @@ export async function loadOrg(): Promise<OrgData> {
       created_at: String(r.created_at ?? ''),
     })),
     ((externals.data ?? []) as Row[]).map((r) => ({ employee_id: String(r.employee_id), rater_id: String(r.rater_id) })),
+    ((evaluators.data ?? []) as Row[]).map((r) => ({ external_id: String(r.external_id), evaluator_id: String(r.evaluator_id) })),
   );
 }
 
@@ -207,4 +223,19 @@ export function sendEvaluationLink(profileId: string, cycleId: string): Promise<
 
 export function revokeEvaluationLink(profileId: string, cycleId: string): Promise<ManageResult> {
   return managePeople('revoke_link', { profile_id: profileId, cycle_id: cycleId });
+}
+
+/** An outside person to be evaluated by employees (administrators only). */
+export function addOutsidePerson(input: { full_name: string; email: string; organisation: string }): Promise<ManageResult> {
+  return managePeople('add_outside_person', input);
+}
+
+export async function addOutsideEvaluator(externalId: string, evaluatorId: string): Promise<{ ok: true; added: number } | { ok: false; message: string }> {
+  const { data, error } = await supabase.rpc('add_outside_evaluator', { p_external: externalId, p_evaluator: evaluatorId });
+  return error ? { ok: false, message: databaseErrorMessage(error) } : { ok: true, added: Number(data ?? 0) };
+}
+
+export async function removeOutsideEvaluator(externalId: string, evaluatorId: string): Promise<Result> {
+  const { error } = await supabase.rpc('remove_outside_evaluator', { p_external: externalId, p_evaluator: evaluatorId });
+  return errorResult(error);
 }

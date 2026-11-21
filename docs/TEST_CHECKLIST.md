@@ -7,7 +7,7 @@ URL: https://leadership-compass.leadership-compass.workers.dev
 - [ ] Page loads in incognito; sign in as admin works.
 - [ ] Workspace → Org structure shows the chart; Quick add employee works.
 - [ ] Cycles: create a test cycle, Build evaluations, Open, Review status shows counts.
-- [ ] Insights → Form help → **Draft all with AI** drafts 19 items.
+- [ ] Insights → Form help → **Draft with AI** on one item fills its help; review and Save.
 - [ ] A form: *What does this mean?* shows; **Help me understand** answers (English and Filipino); **Suggest behaviours** shows scenarios; **Improve with AI** returns a suggestion; **Suggest a rating** works.
 - [ ] Submit the form; confirmation email arrives.
 - [ ] Report → **AI summary** → Generate works (after others have submitted).

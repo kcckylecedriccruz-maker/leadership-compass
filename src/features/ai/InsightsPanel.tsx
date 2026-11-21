@@ -475,49 +475,21 @@ async function loadCompetencies(): Promise<CompetencyRecord[]> {
   return (data ?? []) as CompetencyRecord[];
 }
 
-const DRAFT_BATCH = 3;
-
 function FormHelpTool() {
   const { state, reload } = useAsyncData(loadCompetencies);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
-  const [progress, setProgress] = useState<string | null>(null);
+  const [drafting, setDrafting] = useState<string | null>(null);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // One request per item, a few at a time: a single request for all 19 runs past the server's time limit.
-  async function draftAll() {
-    const ids = items.map((c) => c.id);
-    if (ids.length === 0) return;
-    setBusy(true);
-    setMessage(null);
-    let done = 0;
-    let lastError = '';
-    const failed: string[] = [];
-    const draftOne = async (id: string) => {
-      let result = await draftExplanations(id);
-      if (!result.ok) result = await draftExplanations(id);
-      if (result.ok) done += 1;
-      else {
-        failed.push(id);
-        lastError = result.message;
-      }
-      setProgress(`Drafting… ${done} of ${ids.length} done`);
-    };
-    setProgress(`Drafting… 0 of ${ids.length} done`);
-    for (let i = 0; i < ids.length; i += DRAFT_BATCH) {
-      await Promise.all(ids.slice(i, i + DRAFT_BATCH).map(draftOne));
-      reload();
-    }
-    setBusy(false);
-    setProgress(null);
-    if (failed.length === 0) {
-      setMessage({ tone: 'info', text: `Drafted help for ${done} competencies. Review and edit them below.` });
-    } else {
-      setMessage({
-        tone: 'error',
-        text: `Drafted ${done} of ${ids.length}. ${failed.length} could not be drafted (${lastError}) — press the button again or use Edit on those items.`,
-      });
-    }
+  // Drafts one item, saves it, then opens its editor so the admin can review the new text.
+  async function draftOne(id: string) {
+    setDrafting(id);
+    setErrors((e) => ({ ...e, [id]: '' }));
+    const result = await draftExplanations(id);
+    setDrafting(null);
+    if (!result.ok) return setErrors((e) => ({ ...e, [id]: result.message }));
+    reload();
+    setEditing(id);
   }
 
   const items = state.status === 'ready' ? state.data : [];
@@ -525,34 +497,47 @@ function FormHelpTool() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="max-w-2xl text-sm text-ink-muted">
-          The “What does this mean?” panel under each item in the feedback form. The AI drafts it in plain English; you review
-          and edit. {state.status === 'ready' && `${withHelp} of ${items.length} items have help.`}
-        </p>
-        <RunButton busy={busy} label={withHelp > 0 ? 'Redraft all with AI' : 'Draft all with AI'} onClick={() => void draftAll()} />
-      </div>
-      {withHelp > 0 && !busy && (
-        <p className="text-xs text-ink-muted">Redrafting replaces your edits for every item. To redo one item, edit it instead.</p>
-      )}
-      {progress && <p className="text-sm font-semibold text-ink-muted">{progress}</p>}
-      {message && <Notice tone={message.tone}>{message.text}</Notice>}
+      <p className="max-w-2xl text-sm text-ink-muted">
+        The “What does this mean?” panel under each item in the feedback form. Use <span className="font-semibold">Draft with AI</span>{' '}
+        on an item for a plain-English draft, then review and save it, or write it yourself with Edit.{' '}
+        {state.status === 'ready' && `${withHelp} of ${items.length} items have help.`}
+      </p>
       <ul className="space-y-3">
         {items.map((c) => (
           <li key={c.id} className="rounded-card border border-line bg-surface p-4">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
+              <div className="min-w-0 flex-1">
                 <p className="font-semibold">
                   {c.sort_order}. {c.name}
                 </p>
                 <p className="text-xs text-ink-muted">{c.help ? c.help.plain : 'No help yet.'}</p>
               </div>
-              <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setEditing(editing === c.id ? null : c.id)}>
-                {editing === c.id ? 'Close' : 'Edit'}
-              </button>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary px-3 py-1.5 text-xs"
+                  disabled={drafting !== null}
+                  onClick={() => {
+                    if (c.help && !window.confirm('Replace the current help for this item with a new AI draft?')) return;
+                    void draftOne(c.id);
+                  }}
+                >
+                  {drafting === c.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
+                  {drafting === c.id ? 'Drafting…' : c.help ? 'Redraft with AI' : 'Draft with AI'}
+                </button>
+                <button type="button" className="btn-secondary px-3 py-1.5 text-xs" onClick={() => setEditing(editing === c.id ? null : c.id)}>
+                  {editing === c.id ? 'Close' : 'Edit'}
+                </button>
+              </div>
             </div>
+            {errors[c.id] && (
+              <div className="mt-3">
+                <Notice>{errors[c.id]}</Notice>
+              </div>
+            )}
             {editing === c.id && (
               <HelpEditor
+                key={c.help?.plain ?? 'empty'}
                 competency={c}
                 onSaved={() => {
                   setEditing(null);

@@ -1,5 +1,7 @@
 # Reflection – Leadership Compass
 
+**Author:** Kyle Cedric Cruz
+
 ## Why I chose this project
 I chose this project because it is highly relevant to our business. As a consultant who designs and implements
 organisational development (OD) projects for clients, I know that tools like this remove a great deal of clerical work,

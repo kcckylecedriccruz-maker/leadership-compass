@@ -1,5 +1,7 @@
 # Live test checklist (do this in an incognito / private window)
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 URL: https://leadership-compass.leadership-compass.workers.dev
 
 - [ ] Page loads in incognito; sign in as admin works.

@@ -1,5 +1,7 @@
 # v2 GitHub issue (to create once the repository is on GitHub)
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 **Title:** v2: Pilot measurement — show note-quality and completion trends per cycle
 
 **Labels:** enhancement, v2

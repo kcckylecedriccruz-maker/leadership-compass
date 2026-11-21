@@ -1,5 +1,7 @@
 # 2-minute demo script
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Record your screen (e.g. Windows Game Bar: Win + G, or OBS) at https://leadership-compass.leadership-compass.workers.dev.
 Use test data, not real staff feedback.
 

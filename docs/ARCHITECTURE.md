@@ -1,5 +1,7 @@
 # Architecture notes
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 ```mermaid
 flowchart LR
   U[Browser: React + Vite SPA] -->|HTTPS, anon key + user JWT| SB[(Supabase Postgres\nRLS on every table)]

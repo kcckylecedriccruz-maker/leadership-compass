@@ -1,5 +1,7 @@
 # Onboarding – Leadership Compass
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Welcome! This guide gets you (and your Claude Code) up to speed on **Leadership Compass**, a web app for leadership
 self and 360-degree assessments with AI help. Live app: https://leadership-compass.leadership-compass.workers.dev
 

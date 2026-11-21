@@ -1,5 +1,7 @@
 # CLAUDE.md – guide for AI coding agents
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Leadership Compass: leadership self and 360 assessments (React + Vite + TypeScript front end, Supabase Postgres +
 Deno edge functions, Cloudflare hosting (Netlify backup), Gmail email, Gemini/Claude AI). Read `docs/spec.md` and `docs/ARCHITECTURE.md` first.
 

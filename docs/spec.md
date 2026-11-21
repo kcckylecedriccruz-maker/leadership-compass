@@ -1,5 +1,7 @@
 # Leadership Compass – Specification
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Version 1.2 (revised after review, see the end of this document)
 Live app: https://leadership-compass.leadership-compass.workers.dev
 

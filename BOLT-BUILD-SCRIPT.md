@@ -1,5 +1,7 @@
 # Leadership Compass by Formidea: Bolt build script
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 A sequence of prompts that rebuilds this application in [Bolt.new](https://bolt.new), phase by phase.
 
 ## Which path to use

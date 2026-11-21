@@ -1,5 +1,7 @@
 # Idea validation – Leadership Compass
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Seven validation steps, with the evidence behind each. Sources are linked; evidence from our own client work is
 described without naming clients or providers.
 

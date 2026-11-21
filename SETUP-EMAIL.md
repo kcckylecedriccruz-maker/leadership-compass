@@ -1,5 +1,7 @@
 # Email setup: Gmail (Leadership Compass)
 
+**Owners:** Kyle Cedric Cruz and Vivian Cruz
+
 Leadership Compass sends every notification and alert through one Gmail account. There are two ways to connect it.
 Pick **Option A** unless your Google Workspace admin has turned off App passwords.
 

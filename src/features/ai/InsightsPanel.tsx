@@ -475,20 +475,49 @@ async function loadCompetencies(): Promise<CompetencyRecord[]> {
   return (data ?? []) as CompetencyRecord[];
 }
 
+const DRAFT_BATCH = 3;
+
 function FormHelpTool() {
   const { state, reload } = useAsyncData(loadCompetencies);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'error' | 'info'; text: string } | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
+  const [progress, setProgress] = useState<string | null>(null);
 
+  // One request per item, a few at a time: a single request for all 19 runs past the server's time limit.
   async function draftAll() {
+    const ids = items.map((c) => c.id);
+    if (ids.length === 0) return;
     setBusy(true);
     setMessage(null);
-    const result = await draftExplanations();
+    let done = 0;
+    let lastError = '';
+    const failed: string[] = [];
+    const draftOne = async (id: string) => {
+      let result = await draftExplanations(id);
+      if (!result.ok) result = await draftExplanations(id);
+      if (result.ok) done += 1;
+      else {
+        failed.push(id);
+        lastError = result.message;
+      }
+      setProgress(`Drafting… ${done} of ${ids.length} done`);
+    };
+    setProgress(`Drafting… 0 of ${ids.length} done`);
+    for (let i = 0; i < ids.length; i += DRAFT_BATCH) {
+      await Promise.all(ids.slice(i, i + DRAFT_BATCH).map(draftOne));
+      reload();
+    }
     setBusy(false);
-    if (!result.ok) return setMessage({ tone: 'error', text: result.message });
-    setMessage({ tone: 'info', text: `Drafted help for ${result.data.saved} competencies. Review and edit them below.` });
-    reload();
+    setProgress(null);
+    if (failed.length === 0) {
+      setMessage({ tone: 'info', text: `Drafted help for ${done} competencies. Review and edit them below.` });
+    } else {
+      setMessage({
+        tone: 'error',
+        text: `Drafted ${done} of ${ids.length}. ${failed.length} could not be drafted (${lastError}) — press the button again or use Edit on those items.`,
+      });
+    }
   }
 
   const items = state.status === 'ready' ? state.data : [];
@@ -506,6 +535,7 @@ function FormHelpTool() {
       {withHelp > 0 && !busy && (
         <p className="text-xs text-ink-muted">Redrafting replaces your edits for every item. To redo one item, edit it instead.</p>
       )}
+      {progress && <p className="text-sm font-semibold text-ink-muted">{progress}</p>}
       {message && <Notice tone={message.tone}>{message.text}</Notice>}
       <ul className="space-y-3">
         {items.map((c) => (

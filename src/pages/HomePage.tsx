@@ -11,6 +11,7 @@ export function HomePage({ profile }: { profile: Profile }) {
         <h1 className="text-3xl sm:text-4xl">Your development</h1>
         <p className="max-w-2xl text-base leading-relaxed text-ink-muted">
           Your assessment results and development summary appear here once each cycle closes.
+          {profile.role === 'admin' && ' As an administrator, you can also see your report while a cycle is still open.'}
         </p>
       </div>
       <TalentResults />

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Clock3, FileText } from 'lucide-react';
+import { useAuth } from '@/auth/useAuth';
 import { Badge } from '@/components/Badge';
 import { Notice } from '@/components/Notice';
 import { ReportPage } from '@/features/reports/ReportPage';
@@ -54,6 +55,9 @@ async function loadTalentCycles(): Promise<TalentCycle[]> {
 
 export function TalentResults() {
   const { state, reload } = useAsyncData(loadTalentCycles);
+  const { state: auth } = useAuth();
+  // Administrators can see a report while its cycle is still open; everyone else waits for the cycle to close.
+  const isAdmin = auth.status === 'signed_in' && auth.profile.role === 'admin';
   const [openReport, setOpenReport] = useState<{ cycleId: string; talentId: string } | null>(null);
 
   if (openReport) {
@@ -79,6 +83,7 @@ export function TalentResults() {
         <li key={cycle.cycleId}>
           <CycleResultRow
             cycle={cycle}
+            early={isAdmin}
             onOpen={() => setOpenReport({ cycleId: cycle.cycleId, talentId: cycle.talentId })}
           />
         </li>
@@ -87,7 +92,7 @@ export function TalentResults() {
   );
 }
 
-function CycleResultRow({ cycle, onOpen }: { cycle: TalentCycle; onOpen: () => void }) {
+function CycleResultRow({ cycle, onOpen, early }: { cycle: TalentCycle; onOpen: () => void; early: boolean }) {
   return (
     <article className="flex flex-col gap-4 rounded-card border border-line bg-surface p-5 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0 space-y-2">
@@ -98,6 +103,11 @@ function CycleResultRow({ cycle, onOpen }: { cycle: TalentCycle; onOpen: () => v
         <button type="button" onClick={onOpen} className="btn-primary shrink-0">
           <FileText className="h-4 w-4" aria-hidden="true" />
           View my report
+        </button>
+      ) : early ? (
+        <button type="button" onClick={onOpen} className="btn-secondary shrink-0">
+          <FileText className="h-4 w-4" aria-hidden="true" />
+          View my report so far
         </button>
       ) : (
         <p className="text-sm text-ink-muted">Your report opens when the cycle closes.</p>

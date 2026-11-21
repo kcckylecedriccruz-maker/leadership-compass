@@ -10,6 +10,8 @@ import { ReportNotes, ReportRecommendations } from '@/features/reports/ReportRec
 import { buildRecommendations } from '@/features/reports/recommendations';
 import { buildReportText } from '@/features/reports/reportText';
 import { loadReportData, type ReportData } from '@/features/reports/reportData';
+import { formatDate } from '@/lib/format';
+import { supabase } from '@/lib/supabase';
 import { useAsyncData } from '@/lib/useAsyncData';
 
 type ReportPageProps = {
@@ -79,10 +81,28 @@ export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
               </button>
             </Notice>
           )}
+          {state.status === 'ready' && state.data.cycle.status === 'open' && <InProgressBanner data={state.data} />}
           {state.status === 'ready' && <ReportContent data={state.data} />}
         </>
       )}
     </div>
+  );
+}
+
+/** Shown on reports of a cycle that is still open (only administrators can open those). */
+function InProgressBanner({ data }: { data: ReportData }) {
+  const load = useCallback(async () => {
+    const { data: progress } = await supabase.rpc('report_progress', { p_cycle_id: data.cycle.id, p_talent_id: data.talentId });
+    return progress as { submitted: number; total: number } | null;
+  }, [data.cycle.id, data.talentId]);
+  const { state } = useAsyncData(load);
+  const progress = state.status === 'ready' ? state.data : null;
+  return (
+    <Notice tone="info">
+      Feedback is still coming in{progress ? `: ${progress.submitted} of ${progress.total} responses so far` : ''}. This report
+      will change until the cycle closes on {formatDate(data.cycle.closes_at)}. While the cycle is open, every group that has
+      responded is shown, even below the minimum group size. Visible to administrators only.
+    </Notice>
   );
 }
 

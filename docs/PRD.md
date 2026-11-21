@@ -1,7 +1,7 @@
 # Leadership Compass – 1-page PRD
 
 **Product:** Leadership Compass (live: https://leadership-compass.leadership-compass.workers.dev)
-**Owner:** Kyle Cedric Cruz · **Collaborator:** Vivian Cruz · **Status:** v1.2 live · **Full PRD:** shared document "Leadership Compass — Product Requirements"
+**Owners:** Kyle Cedric Cruz and Vivian Cruz · **Status:** v1.2 live · **Full PRD:** shared document "Leadership Compass — Product Requirements"
 
 ## Problem
 HR teams in small and mid-sized Philippine organisations run leadership 360 reviews with spreadsheets, forms and email.

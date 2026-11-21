@@ -3,6 +3,7 @@ import { ArrowLeft, Copy, Printer } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { Notice } from '@/components/Notice';
 import { AiSummary } from '@/features/ai/AiSummary';
+import { ImprovementPlan } from '@/features/ai/ImprovementPlan';
 import { IndividualFeedback } from '@/features/reports/IndividualFeedback';
 import { SharePanel } from '@/features/reports/SharePanel';
 import { ReadinessSummary, ScoreTable } from '@/features/reports/ReportScores';
@@ -20,10 +21,11 @@ type ReportPageProps = {
   onBack: () => void;
 };
 
-type AdminView = 'report' | 'ai' | 'individual' | 'share';
+type AdminView = 'report' | 'improve' | 'ai' | 'individual' | 'share';
 
 const ADMIN_VIEWS: { id: AdminView; label: string }[] = [
   { id: 'report', label: 'Consolidated report' },
+  { id: 'improve', label: 'How to improve' },
   { id: 'ai', label: 'AI summary' },
   { id: 'individual', label: 'Individual feedback' },
   { id: 'share', label: 'Share with managers' },
@@ -48,9 +50,9 @@ export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
         Back
       </button>
 
-      {isAdmin && (
+      {(
         <div role="tablist" aria-label="Report views" className="flex gap-1 overflow-x-auto rounded-2xl bg-muted p-1 print:hidden">
-          {ADMIN_VIEWS.map((item) => (
+          {(isAdmin ? ADMIN_VIEWS : ADMIN_VIEWS.filter((v) => v.id === 'report' || v.id === 'improve')).map((item) => (
             <button
               key={item.id}
               type="button"
@@ -66,11 +68,12 @@ export function ReportPage({ cycleId, talentId, onBack }: ReportPageProps) {
           ))}
         </div>
       )}
+      {view === 'improve' && <ImprovementPlan cycleId={cycleId} talentId={talentId} />}
       {isAdmin && view === 'ai' && <AiSummary cycleId={cycleId} talentId={talentId} />}
       {isAdmin && view === 'individual' && <IndividualFeedback cycleId={cycleId} talentId={talentId} />}
       {isAdmin && view === 'share' && <SharePanel cycleId={cycleId} talentId={talentId} />}
 
-      {(!isAdmin || view === 'report') && (
+      {view === 'report' && (
         <>
           {state.status === 'loading' && <p className="text-sm text-ink-muted">Loading report...</p>}
           {state.status === 'error' && (

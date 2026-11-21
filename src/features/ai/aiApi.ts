@@ -135,3 +135,20 @@ export function formAiFor(assignmentId: string, token?: string): FormAi {
       formAi('suggest_behaviours', { assignment_id: assignmentId, competency_id: competencyId, rating, keywords, language }, token),
   };
 }
+
+// ---- How to improve (interventions) ------------------------------------------------------------
+
+export type ImprovementPlanContent = {
+  overview: string;
+  focus_areas: { competency: string; why: string; on_the_job: string[]; learning: string[]; coaching_conversation: string; measure: string }[];
+  build_on_strengths: { strength: string; how: string }[];
+  plan_30_days: string[];
+  plan_60_days: string[];
+  plan_90_days: string[];
+  manager_questions: string[];
+};
+
+export const generateImprovementPlan = (cycleId: string, talentId: string, language: 'en' | 'fil') =>
+  call<{ content: ImprovementPlanContent; language: string }>('improvement_plan', { cycle_id: cycleId, talent_id: talentId, language });
+export const releaseImprovementPlan = (cycleId: string, talentId: string, release: boolean) =>
+  call<{ released: boolean }>('release_plan', { cycle_id: cycleId, talent_id: talentId, release });

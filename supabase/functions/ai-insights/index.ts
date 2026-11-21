@@ -1,7 +1,8 @@
 // AI features (Gemini by default, Claude optional; see _shared/ai.ts).
 //
 // Admins:  person_summary, cycle_insights, explain_draft, save_help, ask, compare_cycles, person_trend
-// Managers (reports shared with them): team_insights
+// Managers (reports shared with them): team_insights, improvement_plan
+// Admins also: release_plan (makes the improvement plan visible to the employee)
 // Anyone filling a form (signed in or by secure link): coach_note, question_help, suggest_behaviours
 //
 // Names never reach the AI service: free text is scrubbed of everyone's names and people in data are replaced by codes
@@ -115,6 +116,117 @@ ${JSON.stringify(input)}
   if (error) throw new Error(`Could not save the summary: ${error.message}`);
   await audit(admin, caller.id, "ai.person_summary", talentId, { cycle_id: cycleId });
   return { content, generated_at: new Date().toISOString() };
+}
+
+// ---- 1b. How to improve (interventions) ---------------------------------------------------
+
+/** Administrators, and managers an administrator shared this person's report with. */
+async function canPlan(admin: Admin, caller: Caller, cycleId: string, talentId: string): Promise<boolean> {
+  if (caller.role === "admin") return true;
+  const { data } = await admin
+    .from("report_shares")
+    .select("id")
+    .eq("cycle_id", cycleId)
+    .eq("talent_id", talentId)
+    .eq("shared_with", caller.id)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+async function improvementPlan(admin: Admin, caller: Caller, body: Body) {
+  const cycleId = uuid(body, "cycle_id", "cycle");
+  const talentId = uuid(body, "talent_id", "person");
+  const language = body.language === "fil" ? "fil" : "en";
+  if (!(await canPlan(admin, caller, cycleId, talentId))) {
+    throw new AccessError(403, "Only administrators, and managers this report was shared with, can create improvement suggestions.");
+  }
+  const [competencies, answers, scrub, actions] = await Promise.all([
+    loadCompetencies(admin),
+    loadAnswers(admin, cycleId, [talentId]),
+    nameScrubber(admin),
+    admin.from("action_library").select("competency_id, on_the_job, coaching, learning, measure"),
+  ]);
+  if (answers.filter((a) => a.group !== "Self").length === 0) {
+    throw new AccessError(409, "There is no submitted feedback from others yet, so there is nothing to base suggestions on.");
+  }
+  const actionsBy = new Map(((actions.data ?? []) as { competency_id: string }[]).map((a) => [a.competency_id, a]));
+  const input = competencies.map((c) => {
+    const rows = answers.filter((a) => a.competencyId === c.id);
+    const score = scoreCompetencies(rows, [c])[0];
+    return {
+      competency: c.name,
+      category: c.category,
+      definition: c.definition,
+      scores: { self: score.self, others: score.others, ...score.byGroup },
+      notes: rows.map((r) => ({ from: r.group, note: scrub(r.note) })),
+      library_actions: actionsBy.get(c.id) ?? null,
+    };
+  });
+
+  const schema = S.obj({
+    overview: S.str,
+    focus_areas: S.arr(
+      S.obj({ competency: S.str, why: S.str, on_the_job: S.strs, learning: S.strs, coaching_conversation: S.str, measure: S.str }),
+    ),
+    build_on_strengths: S.arr(S.obj({ strength: S.str, how: S.str })),
+    plan_30_days: S.strs,
+    plan_60_days: S.strs,
+    plan_90_days: S.strs,
+    manager_questions: S.strs,
+  });
+  const content = await askJson<Record<string, unknown>>({
+    system: `You are an experienced leadership development coach. You suggest practical interventions to help one employee improve, based on their 360 feedback. Write in ${language === "fil" ? "Filipino (Tagalog), with common English workplace terms where natural" : "plain, warm, professional English"} for a Philippine workplace. Base everything on the data. IMPORTANT: describe patterns and themes only; never quote, paraphrase or hint at a single comment or say which rater group said something specific, so no feedback can be traced to anyone. '[name]' marks a removed name.`,
+    user: `Here is the employee's feedback for one review cycle (ratings 1-5 by rater group, written behaviour examples, and the organisation's library of actions).
+
+Write:
+- overview: 2-3 sentences, encouraging and honest.
+- focus_areas: the 2-3 competencies that most need development. For each: why (the pattern, in general terms), on_the_job (2-3 practical things to practise at work), learning (1-3 learning activities or resources by type, e.g. a short course on..., a book about...), coaching_conversation (what to discuss with their manager), measure (how they and their manager will know it is improving).
+- build_on_strengths: 2-3 strengths and how to use each to help with the focus areas.
+- plan_30_days, plan_60_days, plan_90_days: 2-4 concrete steps each.
+- manager_questions: 4-6 questions the employee can bring to a development conversation with their manager.
+
+<feedback>
+${JSON.stringify(input)}
+</feedback>`,
+    schema,
+    effort: "high",
+  });
+
+  const { error } = await admin.from("ai_improvement_plans").upsert(
+    {
+      cycle_id: cycleId,
+      talent_id: talentId,
+      language,
+      content,
+      model: modelName("high"),
+      generated_by: caller.id,
+      generated_at: new Date().toISOString(),
+      released_at: null,
+      released_by: null,
+    },
+    { onConflict: "cycle_id,talent_id,language" },
+  );
+  if (error) throw new Error(`Could not save the suggestions: ${error.message}`);
+  await audit(admin, caller.id, "ai.improvement_plan", talentId, { cycle_id: cycleId, language });
+  return { content, language };
+}
+
+/** Administrators release (or withdraw) the plan to the employee's My report. */
+async function releasePlan(admin: Admin, caller: Caller, body: Body) {
+  requireAdmin(caller);
+  const cycleId = uuid(body, "cycle_id", "cycle");
+  const talentId = uuid(body, "talent_id", "person");
+  const release = body.release === true;
+  const { data, error } = await admin
+    .from("ai_improvement_plans")
+    .update(release ? { released_at: new Date().toISOString(), released_by: caller.id } : { released_at: null, released_by: null })
+    .eq("cycle_id", cycleId)
+    .eq("talent_id", talentId)
+    .select("id");
+  if (error) throw new Error(`Could not update: ${error.message}`);
+  if ((data ?? []).length === 0) throw new AccessError(404, "Create the suggestions first.");
+  await audit(admin, caller.id, release ? "ai.improvement_plan_released" : "ai.improvement_plan_withdrawn", talentId, { cycle_id: cycleId });
+  return { released: release };
 }
 
 // ---- 2. Note coach -----------------------------------------------------------------------------
@@ -617,6 +729,10 @@ Deno.serve(async (req) => {
     switch (body.action) {
       case "person_summary":
         return json(await personSummary(admin, caller, body), 200);
+      case "improvement_plan":
+        return json(await improvementPlan(admin, caller, body), 200);
+      case "release_plan":
+        return json(await releasePlan(admin, caller, body), 200);
       case "cycle_insights":
         return json(await cycleInsights(admin, caller, body), 200);
       case "explain_draft":

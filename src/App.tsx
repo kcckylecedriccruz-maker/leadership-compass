@@ -11,6 +11,7 @@ import { HomePage } from '@/pages/HomePage';
 import { LoginPage } from '@/pages/LoginPage';
 import { linkTokenFromPath } from '@/features/link/linkApi';
 import { trackView } from '@/lib/telemetry';
+import { onNavigate, takePendingNav } from '@/features/notifications/notificationsApi';
 import { EvaluationLinkPage } from '@/pages/EvaluationLinkPage';
 import { MyProfilePage } from '@/pages/MyProfilePage';
 import { PrivacyPage } from '@/pages/PrivacyPage';
@@ -39,8 +40,21 @@ function homeViews(profile: Profile): HomeView[] {
 
 function HomeViews({ profile }: { profile: Profile }) {
   const views = homeViews(profile);
-  const [selected, setSelected] = useState(0);
+  const labels = views.map((view) => view.label).join('|');
+  const [selected, setSelected] = useState(() => {
+    const wanted = takePendingNav('view');
+    return Math.max(0, views.findIndex((view) => view.label === wanted));
+  });
   const active = views[selected] ?? views[0];
+  useEffect(
+    () =>
+      onNavigate(() => {
+        const wanted = takePendingNav('view');
+        const index = labels.split('|').indexOf(wanted ?? '');
+        if (index >= 0) setSelected(index);
+      }),
+    [labels],
+  );
   useEffect(() => {
     if (active) trackView(active.label);
   }, [active]);
@@ -136,6 +150,7 @@ function AppGate() {
           profile={state.profile}
           onOpenNotifications={isAdmin ? openNotifications : undefined}
           onOpenProfile={openProfile}
+          onBellNavigate={backToHome}
         >
           {showProfile ? (
             <div className="space-y-8">

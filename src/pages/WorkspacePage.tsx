@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { MonitoringPanel } from '@/features/monitoring/MonitoringPanel';
 import { trackView } from '@/lib/telemetry';
+import { onNavigate, takePendingNav } from '@/features/notifications/notificationsApi';
 import { AuditTrailPanel } from '@/features/audit/AuditTrailPanel';
 import { AssignmentsPanel } from '@/features/assignments/AssignmentsPanel';
 import { CyclesPanel } from '@/features/cycles/CyclesPanel';
@@ -22,7 +23,15 @@ export function WorkspacePage({ profile }: { profile: Profile; mode?: 'admin' })
     ...WORKSPACE_SECTIONS.filter((section) => canView(profile, section as Module)),
     ...(isAdminUser ? (['insights', 'monitoring'] as Section[]) : []),
   ];
-  const [selected, setSelected] = useState<Section>(sections[0] ?? 'dashboard');
+  const [selected, setSelected] = useState<Section>(() => (takePendingNav('section') as Section | undefined) ?? sections[0] ?? 'dashboard');
+  useEffect(
+    () =>
+      onNavigate(() => {
+        const wanted = takePendingNav('section') as Section | undefined;
+        if (wanted) setSelected(wanted);
+      }),
+    [],
+  );
   const section = sections.includes(selected) ? selected : sections[0];
   useEffect(() => {
     if (section) trackView(`Workspace/${section}`);

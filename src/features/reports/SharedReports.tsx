@@ -7,6 +7,7 @@ import { IndividualFeedback } from '@/features/reports/IndividualFeedback';
 import { ReportPage } from '@/features/reports/ReportPage';
 import { loadSharedWithMe, type ReportShare } from '@/features/reports/reportSharing';
 import { useAsyncData } from '@/lib/useAsyncData';
+import { markSharedReportOpened } from '@/features/notifications/notificationsApi';
 
 /** Reports an administrator has shared with the signed-in manager. */
 export function SharedReports() {
@@ -63,7 +64,10 @@ export function SharedReports() {
             <li key={share.id}>
               <button
                 type="button"
-                onClick={() => setOpen(share)}
+                onClick={() => {
+                  setOpen(share);
+                  void markSharedReportOpened(share.cycle_id, share.talent_id);
+                }}
                 className="flex w-full items-center gap-3 rounded-card border border-line bg-surface p-4 text-left hover:border-primary"
               >
                 <span className="min-w-0 flex-1">

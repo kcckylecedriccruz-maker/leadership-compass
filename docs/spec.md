@@ -56,6 +56,7 @@ Users and Audit to non-admins. Notifications/Settings, Insights and Monitoring s
 
 ### 3.5 Notifications, audit, monitoring
 - F19. Emails through Gmail: invitations (with secure link where needed), reminders, confirmations, alerts, codes.
+- F19a. In-app notification bell: red count of pending peer suggestions (immediate manager), forms to complete, new shared reports and (admins) unreleased improvement plans; items link to where they are handled; opened shared reports stay listed uncounted until removed; refreshes every minute.
 - F20. Append-only audit trail of app actions, data changes and sign-ins.
 - F21. Monitoring: anonymous page views and browser errors, AI use and sign-ins (admin tab), plus an uptime check every 6 hours.
 

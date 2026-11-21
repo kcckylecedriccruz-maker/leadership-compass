@@ -50,7 +50,7 @@ the org structure. Each person gets a report with readiness, strengths, blind sp
 | **Groups** | Named groups (team, batch, cohort); filter and badge people by group. |
 | **Bulk upload** | Onboard up to 500 people from an Excel template, with department, position, immediate manager, direct reports, peers and groups. Every row is checked before anything is created. |
 | **Audit trail** | Append-only record of app actions, data changes (before/after) and sign-ins; search, filter and CSV export. |
-| **Notifications** | Invites, codes, reminders, confirmations, alerts and "dashboard ready" emails through Gmail; per-person preferences; admin-only settings. |
+| **Notifications** | Invites, codes, reminders, confirmations, alerts and "dashboard ready" emails through Gmail; per-person preferences; admin-only settings. In the app, a **bell** next to My profile shows a red count of what needs action (peer suggestions to approve, forms to complete, new shared reports, and for admins improvement plans not yet released); each item links to where it is handled, and opened shared reports stay listed without the count until removed. Refreshes every minute. |
 | **Brand** | Formidea theme: Public Sans, deep blue `#005B99`, red call to action `#D83024`, light and dark mode, works on phones. |
 
 ## Roles and access

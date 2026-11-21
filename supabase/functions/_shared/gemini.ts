@@ -23,31 +23,49 @@ export async function askGemini<T>(options: {
   const key = Deno.env.get("GEMINI_API_KEY");
   if (!key) throw new AiError(503, "AI is not set up yet. An administrator needs to add the Gemini API key.");
 
-  let response: Response;
-  try {
-    response = await fetch(ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": key, "Api-Revision": API_REVISION },
-      body: JSON.stringify({
-        model: geminiModel(options.effort),
-        input: options.user,
-        system_instruction: options.system,
-        stream: false,
-        response_format: { type: "text", mime_type: "application/json", schema: options.schema },
-        generation_config: { max_output_tokens: options.maxTokens, thinking_level: options.effort },
-      }),
-    });
-  } catch {
-    throw new AiError(502, "Could not reach the AI service. Try again shortly.");
+  // Google's free tier is sometimes overloaded (503) or rate-limited (429). Try the chosen model twice, then the
+  // other free model, with short waits, before giving up.
+  const primary = geminiModel(options.effort);
+  const secondary = primary === "gemini-3.8-flash" ? "gemini-3.5-flash-lite" : "gemini-3.8-flash";
+  const attempts: { model: string; waitMs: number }[] = [
+    { model: primary, waitMs: 0 },
+    { model: primary, waitMs: 1500 },
+    { model: secondary, waitMs: 2500 },
+  ];
+
+  let response: Response | null = null;
+  let lastStatus = 0;
+  for (const attempt of attempts) {
+    if (attempt.waitMs) await new Promise((resolve) => setTimeout(resolve, attempt.waitMs));
+    try {
+      response = await fetch(ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key, "Api-Revision": API_REVISION },
+        body: JSON.stringify({
+          model: attempt.model,
+          input: options.user,
+          system_instruction: options.system,
+          stream: false,
+          response_format: { type: "text", mime_type: "application/json", schema: options.schema },
+          generation_config: { max_output_tokens: options.maxTokens, thinking_level: options.effort },
+        }),
+      });
+    } catch {
+      response = null;
+      lastStatus = 0;
+      continue;
+    }
+    if (response.ok) break;
+    lastStatus = response.status;
+    if (response.status === 401 || response.status === 403) throw new AiError(503, "The Gemini API key is not valid.");
+    const retryable = response.status === 429 || response.status >= 500;
+    console.error(`Gemini error ${response.status} (${attempt.model}):`, (await response.text()).slice(0, 300));
+    if (!retryable) throw new AiError(502, "The AI service could not answer this request. Try again shortly.");
   }
 
-  if (response.status === 429) {
-    throw new AiError(429, "The AI is busy or today's free limit was reached. Please try again later.");
-  }
-  if (response.status === 401 || response.status === 403) throw new AiError(503, "The Gemini API key is not valid.");
-  if (!response.ok) {
-    console.error(`Gemini error ${response.status}:`, (await response.text()).slice(0, 300));
-    throw new AiError(502, "The AI service could not answer right now. Try again shortly.");
+  if (!response || !response.ok) {
+    if (lastStatus === 429) throw new AiError(429, "The AI is busy or today's free limit was reached. Please try again later.");
+    throw new AiError(503, "Google's AI service is very busy right now. Please try again in a few minutes.");
   }
 
   const body = (await response.json()) as Interaction;

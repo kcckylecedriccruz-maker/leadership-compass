@@ -75,7 +75,7 @@ Done: all features above live; 12 unit tests; CI and uptime workflows; monitorin
 
 Open:
 - [x] Code on GitHub (public), CI green.
-- [ ] Test the AI features live (Gemini free tier) using `docs/TEST_CHECKLIST.md`.
+- [x] AI features tested live (Gemini free tier) with `docs/TEST_CHECKLIST.md`.
 - [x] v2 GitHub issue created from `docs/V2_ISSUE.md`.
 - [x] Idea-validation evidence (`docs/VALIDATION.md`) and reflection (`docs/REFLECTION.md`).
 - [ ] Owner-only: 2-minute demo (`docs/DEMO_SCRIPT.md`).

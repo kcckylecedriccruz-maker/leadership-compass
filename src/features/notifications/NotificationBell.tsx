@@ -73,7 +73,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: () => void }) {
         key: 'peers',
         label: `${data.peer_suggestions} peer suggestion${data.peer_suggestions === 1 ? '' : 's'} to review`,
         detail: 'Approve or decline in My team',
-        target: { view: 'My team' },
+        target: { view: 'My team', focus: 'peer-suggestions' },
       });
     }
     for (const f of data.forms_pending) {
@@ -81,7 +81,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: () => void }) {
         key: `forms-${f.cycle}`,
         label: `${f.count} form${f.count === 1 ? '' : 's'} to complete in ${f.cycle}`,
         detail: `Closes ${formatDate(f.closes_at)}`,
-        target: { view: 'My assessments' },
+        target: { view: 'My assessments', focus: 'pending-form' },
       });
     }
     if (data.new_shares > 0) {
@@ -89,7 +89,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: () => void }) {
         key: 'shares',
         label: `${data.new_shares} new report${data.new_shares === 1 ? '' : 's'} shared with you`,
         detail: 'Open in My team',
-        target: { view: 'My team' },
+        target: { view: 'My team', focus: 'shared-reports' },
       });
     }
     if (data.plans_to_release > 0) {
@@ -97,7 +97,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: () => void }) {
         key: 'plans',
         label: `${data.plans_to_release} improvement plan${data.plans_to_release === 1 ? '' : 's'} not yet released`,
         detail: 'Review on the report’s How to improve tab',
-        target: { view: 'Workspace', section: 'dashboard' },
+        target: { view: 'Workspace', section: 'dashboard', focus: 'dashboard' },
       });
     }
   }
@@ -148,7 +148,7 @@ export function NotificationBell({ onNavigate }: { onNavigate: () => void }) {
               <ul className="space-y-0.5">
                 {data.opened_shares.map((s) => (
                   <li key={s.id} className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-muted">
-                    <button type="button" onClick={() => go({ view: 'My team' })} className="min-w-0 flex-1 text-left">
+                    <button type="button" onClick={() => go({ view: 'My team', focus: `share-${s.id}` })} className="min-w-0 flex-1 text-left">
                       <span className="block truncate text-sm">{s.person}</span>
                       <span className="block truncate text-xs text-ink-muted">
                         {s.cycle} · {s.kind === 'individual' ? 'Individual' : 'Consolidated'}

@@ -79,7 +79,7 @@ export function TeamPage({ profile }: { profile: Profile }) {
               const approved = org.peers.filter((l) => l.employee_id === person.id && l.status === 'approved').length;
               const expanded = open === person.id;
               return (
-                <li key={person.id} className="rounded-card border border-line bg-surface">
+                <li key={person.id} data-nav-focus={pending > 0 ? 'peer-suggestions' : undefined} className="rounded-card border border-line bg-surface">
                   <button
                     type="button"
                     className="flex w-full items-center gap-3 p-4 text-left"

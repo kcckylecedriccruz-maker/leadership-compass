@@ -68,7 +68,9 @@ function AssessmentCard({ item, onOpen }: { item: AssessmentSummary; onOpen: (as
   const notOpenYet = item.cycle.status === 'draft';
 
   return (
-    <li className={`flex flex-col gap-5 rounded-card border border-line bg-surface p-5 transition-colors duration-200 ${notOpenYet ? 'opacity-80' : 'hover:border-primary'} sm:flex-row sm:items-center sm:justify-between sm:p-6`}>
+    <li
+      data-nav-focus={item.status !== 'submitted' && item.cycle.status === 'open' ? 'pending-form' : undefined}
+      className={`flex flex-col gap-5 rounded-card border border-line bg-surface p-5 transition-colors duration-200 ${notOpenYet ? 'opacity-80' : 'hover:border-primary'} sm:flex-row sm:items-center sm:justify-between sm:p-6`}>
       <div className="min-w-0 space-y-1">
         <h2 className="truncate text-lg">{item.talent.full_name}</h2>
         {details && <p className="text-sm text-ink-muted">{details}</p>}

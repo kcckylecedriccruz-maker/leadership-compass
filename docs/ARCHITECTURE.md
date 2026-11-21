@@ -34,7 +34,8 @@ flowchart LR
 
 `profiles` (role, person_type, manager_id, exclusions, deletion fields) · `talents` · `cycles` (include switches) ·
 `assignments` (kind, origin, status) · `responses` · `peer_relationships` · `external_raters` · `external_evaluators` ·
-`evaluation_links` · `report_shares` · `ai_person_summaries` · `ai_cycle_insights` · `audit_log` (append-only) ·
+`evaluation_links` · `report_shares` (opened / dismissed for the bell) · `ai_person_summaries` · `ai_cycle_insights` ·
+`ai_improvement_plans` (released_at) · `plan_notes` (verdict, visible_to_employee) · `audit_log` (append-only) ·
 `app_events` (anonymous analytics).
 
 ## Decisions
@@ -43,4 +44,7 @@ flowchart LR
 2. **Evaluations generated in SQL** (`generate_cycle_evaluations`): one source of truth, auditable, idempotent refresh.
 3. **Signed tokens for secure links** (HMAC of id and version): nothing secret is stored; resending bumps the version.
 4. **One AI function with a provider switch**: the browser never sees a key; the provider can change without UI changes.
-5. **First-party analytics**: no third-party tracker, no personal data; tokens and emails are stripped in the browser.
+5. **Notification bell from one SQL function** (`my_notifications`): one round trip per minute, counts computed
+   with the caller's own permissions; no push service needed.
+6. **AI resilience**: retries and a fallback free model (`_shared/gemini.ts`), so a busy service rarely reaches users.
+7. **First-party analytics**: no third-party tracker, no personal data; tokens and emails are stripped in the browser.

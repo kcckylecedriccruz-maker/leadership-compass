@@ -37,7 +37,7 @@ export function DashboardPanel() {
   }
 
   return (
-    <section className="space-y-6" aria-labelledby="dashboard-heading">
+    <section className="space-y-6" aria-labelledby="dashboard-heading" data-nav-focus="dashboard">
       <div className="space-y-1">
         <h2 id="dashboard-heading" className="text-2xl">
           Dashboard

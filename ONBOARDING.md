@@ -11,7 +11,9 @@ self and 360-degree assessments with AI help. Live app: https://leadership-compa
   (*What does this mean?*, *Help me understand* in English/Filipino with a rating suggestion, *Suggest behaviours*,
   *Improve with AI*).
 - **Reports**: anonymous by rater group (minimum group size), admin-only individual feedback and sharing, AI feedback
-  summary with a 30/60/90-day plan.
+  summary with a 30/60/90-day plan; admins can open reports before the cycle closes. **How to improve**: AI
+  interventions per focus area, manager notes, released to the employee by an admin.
+- **Notification bell** next to My profile: red count of pending forms, peer approvals, shared reports and plans.
 - **Insights** (admin): cycle insights with themes from written feedback, ask a question about the scores, compare
   cycles, person trend; **Team insights** for managers.
 - People **without an account** answer through **secure links**; quick-add employees; account deletion with a 3-day
@@ -28,7 +30,7 @@ Roles are only **Administrator** and **Employee**; "Manager" is derived from hav
 
 ## 3. Stack
 React 18 + TypeScript + Vite + Tailwind · Supabase (Postgres with RLS, Auth, Deno edge functions, pg_cron) ·
-Netlify hosting · Gmail SMTP for email · Google Gemini (free tier, default) or Anthropic Claude for AI ·
+Cloudflare hosting (Netlify backup) · Gmail SMTP for email · Google Gemini (free tier, default) or Anthropic Claude for AI ·
 Vitest + GitHub Actions for CI.
 
 ## 4. Run it locally
@@ -49,7 +51,7 @@ function secrets. Never put a key in code, chat or the repository.
 ## 5. Where things are
 | Path | What |
 | --- | --- |
-| `src/features/*` | Feature folders: assessments, cycles, org, users, reports, ai, link, monitoring, assignments |
+| `src/features/*` | Feature folders: assessments, cycles, org, users, reports, ai, link, monitoring, assignments, notifications |
 | `src/pages/*` | Top-level pages (workspace, link page, profile, login) |
 | `src/lib/*` | Shared helpers (Supabase client, telemetry, formatting, types) |
 | `supabase/migrations/*` | Database schema history (never edit an applied file; add a new one) |
@@ -67,13 +69,14 @@ function secrets. Never put a key in code, chat or the repository.
 - Work on a branch and open a pull request; the owner deploys database and function changes unless you have access.
 
 ## 7. Current status and open to-dos
-Done: all features above live; 10 unit tests; CI and uptime workflows; monitoring; spec, architecture, PRD.
+Done: all features above live; 12 unit tests; CI and uptime workflows; monitoring; spec, architecture, PRD.
 
 Open:
-- [ ] Put the code on GitHub (public before submission) and confirm the CI run is green.
+- [x] Code on GitHub (public), CI green.
 - [ ] Test the AI features live (Gemini free tier) using `docs/TEST_CHECKLIST.md`.
-- [ ] Create the v2 GitHub issue from `docs/V2_ISSUE.md`.
-- [ ] Owner-only: idea-validation evidence (`docs/VALIDATION.md`), reflection (`docs/REFLECTION.md`), 2-minute demo (`docs/DEMO_SCRIPT.md`).
+- [x] v2 GitHub issue created from `docs/V2_ISSUE.md`.
+- [x] Idea-validation evidence (`docs/VALIDATION.md`) and reflection (`docs/REFLECTION.md`).
+- [ ] Owner-only: 2-minute demo (`docs/DEMO_SCRIPT.md`).
 
 Note: this is an individually graded course project; agree with the owner on what help is allowed.
 

@@ -9,6 +9,9 @@ URL: https://leadership-compass.leadership-compass.workers.dev
 - [ ] A form: *What does this mean?* shows; **Help me understand** answers (English and Filipino); **Suggest behaviours** shows scenarios; **Improve with AI** returns a suggestion; **Suggest a rating** works.
 - [ ] Submit the form; confirmation email arrives.
 - [ ] Report → **AI summary** → Generate works (after others have submitted).
+- [ ] Admin opens a report **before the cycle closes** (early view); an employee cannot.
+- [ ] Report → **How to improve** → Generate; share the report with the immediate manager; the manager adds a note and marks it visible; admin **Release**; the employee sees the plan and the visible note.
+- [ ] **Bell**: red count matches pending forms; clicking an item opens and highlights it; a shared report counts until opened, then stays listed until removed with X.
 - [ ] Insights → Ask a question / Compare cycles / Person trend answer.
 - [ ] Secure link: add an external rater, Send link, open it in incognito, submit.
 - [ ] Monitoring tab shows page views; no unexpected browser errors.

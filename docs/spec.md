@@ -1,6 +1,6 @@
 # Leadership Compass – Specification
 
-Version 1.1 (revised after review, see the end of this document)
+Version 1.2 (revised after review, see the end of this document)
 Live app: https://leadership-compass.leadership-compass.workers.dev
 
 ## 1. Purpose
@@ -14,8 +14,8 @@ reports, and AI help for raters, administrators and managers.
 | Role | Who | Can do |
 | --- | --- | --- |
 | Administrator | HR / programme owner | Everything: users, org structure, cycles, assignments, reports, sharing, AI insights, monitoring, audit trail, email settings |
-| Employee | Everyone else | Self-assessment and the evaluations generated for them; suggest peers; own report after the cycle closes |
-| Manager (derived) | An employee with direct reports | Also: approve or add peers for the team, quick-add direct reports, add external raters, open reports an admin shared, team AI insights |
+| Employee | Everyone else | Self-assessment and the evaluations generated for them; suggest peers; own report after the cycle closes; own improvement plan once an admin releases it |
+| Manager (derived) | An employee with direct reports | Also: approve or add peers for the team, quick-add direct reports, add external raters, open reports an admin shared (with the improvement plan and manager notes), team AI insights |
 | External rater | Client, partner, contractor | Gives feedback to an employee by secure link only; never signs in |
 | Outside person | Contractor, partner, client contact | Is evaluated by chosen employees; no account, no self-assessment |
 
@@ -51,6 +51,9 @@ Users and Audit to non-admins. Notifications/Settings, Insights and Monitoring s
 ### 3.4 Reports and insights
 - F15. Consolidated report per person and cycle: scores by rater group, bands, perception, readiness, behaviour notes, recommendations. Anonymous groups below the minimum group size are hidden.
 - F16. Admin-only: individual feedback, sharing with the immediate or skip-level manager (any employee for outside people), AI feedback summary with a 30/60/90-day plan.
+- F16a. Early reports (admin only): admins open any report while the cycle is open, before everyone has responded; every submitted group and note is shown as it arrives. After close the minimum-group-size rule applies. Employees and managers never see early reports.
+- F16b. **How to improve**: AI improvement plan per person and cycle (English or Filipino) with suggested interventions per focus area, from all feedback but written as themes only. Visible to admins and to managers the report was shared with; released to the employee by an admin.
+- F16c. Manager notes on the plan: per focus area or overall, with a verdict (agree / adjust / disagree) and text; written by admins and shared-with managers; the immediate manager or an admin marks notes visible to the employee. Notes on an older plan version are labelled. Restarting a cycle clears plans and notes.
 - F17. Workspace Insights (admin): cycle insights including themes from all written feedback, ask a question about the scores, compare cycles, person trend, form-help editor. Team insights for managers.
 - F18. Dashboard grouped into Employees, Outside people and Deleted people; review status per cycle (submitted / in progress / not started, by assessor or by person).
 
@@ -65,6 +68,7 @@ Users and Audit to non-admins. Notifications/Settings, Insights and Monitoring s
 - One server function (`ai-insights`) calls the provider chosen by `AI_PROVIDER`: **Google Gemini (free tier, default)** or Anthropic Claude.
 - Structured JSON output with a fixed schema per feature, so the UI always gets the same shape.
 - Privacy: names of everyone in the system are removed from free text; people in score data become codes ([P3]) that are restored after the answer. Insight questions use scores only. Everything AI-generated is labelled.
+- Busy service: each request is retried and then sent to a second free Gemini model before failing.
 - Limits: when the free quota is reached, users see a friendly "try again later" message; nothing else breaks.
 
 ## 5. Non-functional requirements
@@ -88,7 +92,7 @@ Users and Audit to non-admins. Notifications/Settings, Insights and Monitoring s
 The first version of this specification (v1.0) was reviewed against the running app and user feedback. Findings and
 the resulting revisions:
 
-| # | Review finding | Revision in v1.1 |
+| # | Review finding | Revision in v1.1 (first review) |
 | --- | --- | --- |
 | R1 | "Assessor" and "Talent" were separate roles, but in practice everyone is both. | Roles reduced to Administrator and Employee; manager features derived from the org structure (F6–F9). |
 | R2 | Evaluations were assigned by hand and easy to miss. | Cycles generate evaluations from the org chart with include switches and refresh (F9). |
@@ -98,3 +102,13 @@ the resulting revisions:
 | R6 | A paid AI provider was a barrier for the project. | Default provider switched to Gemini's free tier; Claude kept as an option (section 4). |
 | R7 | Admins needed to see progress and health at a glance. | Review status per cycle and a Monitoring tab plus uptime checks (F18, F21). |
 | R8 | Deleting people must not break past reports. | 3-day recoverable deletion with anonymisation (F5). |
+
+Revisions in v1.2 (after testing with the programme owner):
+
+| # | Finding | Revision in v1.2 |
+| --- | --- | --- |
+| R9 | Admins needed results before the cycle closes. | Early reports for admins only; not for employees or managers (F16a). |
+| R10 | Reports said what to improve but not how. | AI improvement plans with interventions, released by an admin (F16b). |
+| R11 | Managers should shape the plan before the employee sees it. | Manager notes with verdicts and per-note visibility (F16c). |
+| R12 | Pending actions were easy to miss. | Notification bell with counts that links to each item (F19a). |
+| R13 | The free AI service was sometimes overloaded. | Retries with a fallback model (section 4). |

@@ -19,7 +19,8 @@ export function alertCount(n: MyNotifications): number {
   return n.peer_suggestions + n.plans_to_release + n.forms_pending.reduce((sum, f) => sum + f.count, 0) + n.new_shares;
 }
 
-export type NavTarget = { view: 'My assessments' | 'My team' | 'Workspace'; section?: string };
+/** focus: the data-nav-focus value of the element to scroll to and highlight once the screen has loaded. */
+export type NavTarget = { view: 'My assessments' | 'My team' | 'Workspace'; section?: string; focus?: string };
 
 const NAV_EVENT = 'lc:navigate';
 const CHANGED_EVENT = 'lc:notifications-changed';
@@ -30,8 +31,23 @@ let pending: Partial<NavTarget> = {};
 
 /** Asks the home screen to switch to a tab (and Workspace section). */
 export function navigateTo(target: NavTarget) {
-  pending = { ...target };
+  pending = { view: target.view, section: target.section };
   window.dispatchEvent(new Event(NAV_EVENT));
+  if (target.focus) focusWhenReady(target.focus);
+}
+
+const HIGHLIGHT = ['ring-2', 'ring-accent', 'ring-offset-2'];
+
+/** Waits (up to about 5 seconds) for the element to appear, then scrolls to it and highlights it briefly. */
+function focusWhenReady(key: string, triesLeft = 25) {
+  const element = document.querySelector<HTMLElement>(`[data-nav-focus="${key}"]`);
+  if (!element) {
+    if (triesLeft > 0) window.setTimeout(() => focusWhenReady(key, triesLeft - 1), 200);
+    return;
+  }
+  element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  element.classList.add(...HIGHLIGHT);
+  window.setTimeout(() => element.classList.remove(...HIGHLIGHT), 2500);
 }
 
 /** Returns and clears one part of the pending navigation target. */

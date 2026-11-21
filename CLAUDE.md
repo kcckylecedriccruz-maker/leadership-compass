@@ -22,7 +22,7 @@ Deno edge functions, Cloudflare hosting (Netlify backup), Gmail email, Gemini/Cl
 - Add or update unit tests for pure logic; keep `npm test`, lint, type-check and build green (CI runs them).
 
 ## Where things are
-- `src/features/*` – feature folders (assessments, cycles, org, users, reports, ai, link, monitoring)
+- `src/features/*` – feature folders (assessments, cycles, org, users, reports, ai, link, monitoring, notifications)
 - `src/pages/*` – top-level pages · `src/lib/*` – shared helpers
 - `supabase/functions/*` – edge functions; shared code in `_shared/`
 - `supabase/migrations/*` – schema history

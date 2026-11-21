@@ -41,7 +41,7 @@ export function SharedReports() {
   }
 
   return (
-    <section className="space-y-4" aria-labelledby="shared-heading">
+    <section className="space-y-4" aria-labelledby="shared-heading" data-nav-focus="shared-reports">
       <h2 id="shared-heading" className="flex items-center gap-2 text-xl">
         <FileText className="h-5 w-5 text-primary" aria-hidden="true" />
         Reports shared with you
@@ -61,7 +61,7 @@ export function SharedReports() {
       {state.status === 'ready' && state.data.length > 0 && (
         <ul className="space-y-2">
           {state.data.map((share) => (
-            <li key={share.id}>
+            <li key={share.id} data-nav-focus={`share-${share.id}`} className="rounded-card">
               <button
                 type="button"
                 onClick={() => {

@@ -1,6 +1,6 @@
 # Leadership Compass – 1-page PRD
 
-**Product:** Leadership Compass (live: https://leadership-compass-formidea.netlify.app)
+**Product:** Leadership Compass (live: https://leadership-compass.leadership-compass.workers.dev)
 **Owner:** _[your name]_ · **Status:** v1.1 live · **Full PRD:** shared document "Leadership Compass — Product Requirements"
 
 ## Problem

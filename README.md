@@ -6,7 +6,7 @@ Leadership Compass runs leadership **self and 360-degree assessments**. Administ
 invited by email, and every employee rates 19 leadership competencies for themselves and for the people around them in
 the org structure. Each person gets a report with readiness, strengths, blind spots and a development plan. Feedback from peers and direct reports stays anonymous.
 
-- **Live app:** https://leadership-compass-formidea.netlify.app
+- **Live app:** https://leadership-compass.leadership-compass.workers.dev (Cloudflare, main) · backup: https://leadership-compass-formidea.netlify.app (Netlify)
 - **Product requirements:** [docs/PRD.md](docs/PRD.md) (1 page) and the shared document *Leadership Compass — Product Requirements*
 - **Specification and architecture:** [docs/spec.md](docs/spec.md) · [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · agent guides [CLAUDE.md](CLAUDE.md) and [.cursorrules](.cursorrules)
 - **Project deliverables:** [validation](docs/VALIDATION.md) · [reflection](docs/REFLECTION.md) · [demo script](docs/DEMO_SCRIPT.md) · [live test checklist](docs/TEST_CHECKLIST.md) · [v2 issue](docs/V2_ISSUE.md)

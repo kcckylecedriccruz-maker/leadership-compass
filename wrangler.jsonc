@@ -1,0 +1,11 @@
+// Cloudflare hosting for Leadership Compass: the static build in dist/ served as a single-page app.
+// Security and cache headers come from dist/_headers (copied from public/_headers at build time).
+// Deploy: npm run build, then npx wrangler@4.158.0 deploy
+{
+  "name": "leadership-compass",
+  "compatibility_date": "2026-11-04",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "single-page-application"
+  }
+}

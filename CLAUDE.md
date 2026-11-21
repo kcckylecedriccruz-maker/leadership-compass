@@ -1,13 +1,14 @@
 # CLAUDE.md – guide for AI coding agents
 
 Leadership Compass: leadership self and 360 assessments (React + Vite + TypeScript front end, Supabase Postgres +
-Deno edge functions, Netlify hosting, Gmail email, Gemini/Claude AI). Read `docs/spec.md` and `docs/ARCHITECTURE.md` first.
+Deno edge functions, Cloudflare hosting (Netlify backup), Gmail email, Gemini/Claude AI). Read `docs/spec.md` and `docs/ARCHITECTURE.md` first.
 
 ## Commands
 - `npm run dev` – local app (port 5173) · `npm run build` · `npm run lint` · `npx tsc -b` · `npm test` (Vitest)
 - Edge functions type check: `cd supabase/functions && npx -y deno@2.5.6 check --node-modules-dir=none */index.ts` (delete `deno.lock` afterwards)
 - Database changes: add a new file in `supabase/migrations/` (never edit an applied one), then `npx -y supabase db push --remote=<ref> --yes`
 - Deploy functions: `npx -y supabase functions deploy --remote=<ref> --use-api --yes`
+- Deploy the site: `npm run build`, then Cloudflare (main) `npx wrangler@4.158.0 deploy` and, when it has credits, Netlify (backup)
 
 ## Rules
 - Security first: every table has RLS; privileged writes go through SECURITY DEFINER SQL functions or edge functions with `SET search_path = ''`.

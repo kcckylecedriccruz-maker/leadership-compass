@@ -1,6 +1,6 @@
 # 2-minute demo script
 
-Record your screen (e.g. Windows Game Bar: Win + G, or OBS) at https://leadership-compass-formidea.netlify.app.
+Record your screen (e.g. Windows Game Bar: Win + G, or OBS) at https://leadership-compass.leadership-compass.workers.dev.
 Use test data, not real staff feedback.
 
 | Time | Show | Say |

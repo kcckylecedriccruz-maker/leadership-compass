@@ -31,3 +31,9 @@ supabase/.temp/
 deno.lock
 
 *.tsbuildinfo
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+!.env.example

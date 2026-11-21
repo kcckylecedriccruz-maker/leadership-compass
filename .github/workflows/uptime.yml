@@ -13,7 +13,10 @@ jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - name: Live site responds
+      - name: Live site responds (Cloudflare, main)
+        run: |
+          curl -fsS --max-time 30 https://leadership-compass.leadership-compass.workers.dev/ | grep -q "Leadership Compass"
+      - name: Backup site responds (Netlify)
         run: |
           curl -fsS --max-time 30 https://leadership-compass-formidea.netlify.app/ | grep -q "Leadership Compass"
       - name: Server functions respond

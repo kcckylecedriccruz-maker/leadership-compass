@@ -1,6 +1,6 @@
 # Live test checklist (do this in an incognito / private window)
 
-URL: https://leadership-compass-formidea.netlify.app
+URL: https://leadership-compass.leadership-compass.workers.dev
 
 - [ ] Page loads in incognito; sign in as admin works.
 - [ ] Workspace → Org structure shows the chart; Quick add employee works.

@@ -13,14 +13,15 @@ flowchart LR
   CRON -->|hourly| PUR[purge-deleted-accounts]
   GH[GitHub Actions] -->|CI on push| R[Repo]
   GH -->|every 6h| UP[Uptime check]
-  N[Netlify] -->|serves dist/| U
+  CF[Cloudflare main] -->|serves dist/| U
+  N[Netlify backup] -->|serves dist/| U
 ```
 
 ## Layers
 
 | Layer | Technology | Notes |
 | --- | --- | --- |
-| Front end | React 18, TypeScript, Vite, Tailwind | Single-page app; Formidea theme; served by Netlify with strict security headers (`netlify.toml`). |
+| Front end | React 18, TypeScript, Vite, Tailwind | Single-page app; Formidea theme; served by **Cloudflare** (main, `wrangler.jsonc`) and Netlify (backup, `netlify.toml`), both with the strict security headers in `public/_headers`. |
 | Data | Supabase Postgres | Row-level security everywhere; privileged logic in SQL functions (`private` schema) and edge functions. |
 | Auth | Supabase Auth | Email + password; activation by 6-digit code; secure links for people without accounts. |
 | Server | Supabase Edge Functions (Deno) | ~28 functions: user management, links, emails, scheduler, AI, deletion purge. |

@@ -1,7 +1,7 @@
 # Leadership Compass – Specification
 
 Version 1.1 (revised after review, see the end of this document)
-Live app: https://leadership-compass-formidea.netlify.app
+Live app: https://leadership-compass.leadership-compass.workers.dev
 
 ## 1. Purpose
 

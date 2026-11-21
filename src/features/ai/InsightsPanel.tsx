@@ -15,18 +15,20 @@ import {
   type CycleInsights,
   type TrendResult,
 } from '@/features/ai/aiApi';
+import { loadNoteSummary } from '@/features/ai/planNotesApi';
 import { formatDate } from '@/lib/format';
 import type { CompetencyRecord } from '@/lib/records';
 import { supabase } from '@/lib/supabase';
 import { useAsyncData } from '@/lib/useAsyncData';
 
-type Tab = 'cycle' | 'ask' | 'compare' | 'trend' | 'help';
+type Tab = 'cycle' | 'ask' | 'compare' | 'trend' | 'feedback' | 'help';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'cycle', label: 'Cycle insights' },
   { id: 'ask', label: 'Ask a question' },
   { id: 'compare', label: 'Compare cycles' },
   { id: 'trend', label: 'Person trend' },
+  { id: 'feedback', label: 'Manager feedback' },
   { id: 'help', label: 'Form help' },
 ];
 
@@ -93,6 +95,7 @@ export function InsightsPanel() {
       {state.status === 'ready' && tab === 'ask' && <AskTool />}
       {state.status === 'ready' && tab === 'compare' && <CompareTool basics={state.data} />}
       {state.status === 'ready' && tab === 'trend' && <TrendTool basics={state.data} />}
+      {state.status === 'ready' && tab === 'feedback' && <ManagerFeedbackSummary />}
       {state.status === 'ready' && tab === 'help' && <FormHelpTool />}
     </section>
   );
@@ -582,6 +585,51 @@ function HelpEditor({ competency, onSaved }: { competency: CompetencyRecord; onS
           Save
         </button>
       </div>
+    </div>
+  );
+}
+
+// ---- Manager feedback on improvement plans -------------------------------------------------------
+
+function ManagerFeedbackSummary() {
+  const { state } = useAsyncData(loadNoteSummary);
+  if (state.status === 'loading') return <p className="text-sm text-ink-muted">Loading...</p>;
+  if (state.status === 'error') return <Notice>We could not load manager feedback.</Notice>;
+  const rows = state.data;
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-ink-muted">
+        How managers rated the AI improvement suggestions (How to improve tab on reports), per focus area. Many “Adjust” or
+        “Disagree” verdicts show where the suggestions need human judgement.
+      </p>
+      {rows.length === 0 ? (
+        <p className="rounded-card border border-dashed border-line p-6 text-center text-sm text-ink-muted">No manager feedback yet.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-card border border-line bg-surface">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="bg-muted text-xs uppercase tracking-wide text-ink-muted">
+              <tr>
+                <th className="px-4 py-3 font-semibold">Focus area</th>
+                <th className="px-3 py-3 text-right font-semibold">Agree</th>
+                <th className="px-3 py-3 text-right font-semibold">Adjust</th>
+                <th className="px-3 py-3 text-right font-semibold">Disagree</th>
+                <th className="px-3 py-3 text-right font-semibold">Written notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.scope} className="border-t border-line">
+                  <td className="px-4 py-3 font-semibold">{r.scope === 'overall' ? 'Whole plan (overall notes)' : r.scope}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{r.agree}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{r.adjust}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{r.disagree}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{r.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

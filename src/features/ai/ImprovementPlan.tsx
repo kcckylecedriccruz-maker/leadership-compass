@@ -3,6 +3,8 @@ import { Loader2, Sparkles, TrendingUp } from 'lucide-react';
 import { useAuth } from '@/auth/useAuth';
 import { Notice } from '@/components/Notice';
 import { generateImprovementPlan, releaseImprovementPlan, type ImprovementPlanContent } from '@/features/ai/aiApi';
+import { PlanNotes } from '@/features/ai/PlanNotes';
+import { loadPlanNotes, OVERALL } from '@/features/ai/planNotesApi';
 import { formatDate } from '@/lib/format';
 import { supabase } from '@/lib/supabase';
 import { useAsyncData } from '@/lib/useAsyncData';
@@ -19,11 +21,19 @@ export function ImprovementPlan({ cycleId, talentId }: { cycleId: string; talent
   const isAdmin = auth.status === 'signed_in' && auth.profile.role === 'admin';
   const userId = auth.status === 'signed_in' ? auth.profile.id : '';
   const load = useCallback(async () => {
-    const [plans, shares] = await Promise.all([
+    const [plans, shares, notes, person] = await Promise.all([
       supabase.from('ai_improvement_plans').select('language, content, generated_at, released_at').eq('cycle_id', cycleId).eq('talent_id', talentId),
       supabase.from('report_shares').select('id').eq('cycle_id', cycleId).eq('talent_id', talentId).eq('shared_with', userId).limit(1),
+      loadPlanNotes(cycleId, talentId),
+      supabase.from('talents').select('profile:profiles!profile_id(manager_id)').eq('id', talentId).maybeSingle(),
     ]);
-    return { plans: (plans.data ?? []) as PlanRow[], shared: (shares.data ?? []).length > 0 };
+    const managerId = (person.data as unknown as { profile: { manager_id: string | null } | null } | null)?.profile?.manager_id ?? null;
+    return {
+      plans: (plans.data ?? []) as PlanRow[],
+      shared: (shares.data ?? []).length > 0,
+      notes,
+      isImmediateManager: managerId !== null && managerId === userId,
+    };
   }, [cycleId, talentId, userId]);
   const { state, reload } = useAsyncData(load);
   const [language, setLanguage] = useState<Language>('en');
@@ -33,8 +43,18 @@ export function ImprovementPlan({ cycleId, talentId }: { cycleId: string; talent
   if (state.status === 'loading') return <p className="text-sm text-ink-muted">Loading...</p>;
   if (state.status === 'error') return <Notice>We could not load the improvement suggestions.</Notice>;
 
-  const { plans, shared } = state.data;
+  const { plans, shared, notes, isImmediateManager } = state.data;
   const canGenerate = isAdmin || shared;
+  const latestPlanAt = plans.reduce<string | null>((latest, p) => (!latest || p.generated_at > latest ? p.generated_at : latest), null);
+  const noteProps = {
+    cycleId,
+    talentId,
+    myId: userId,
+    canWrite: canGenerate,
+    canSetVisibility: isAdmin || isImmediateManager,
+    latestPlanAt,
+    onChanged: reload,
+  };
   // Employees see only released plans; show whichever language exists if the chosen one does not.
   const plan = plans.find((p) => p.language === language) ?? (canGenerate ? undefined : plans[0]);
   const anyReleased = plans.some((p) => p.released_at);
@@ -149,6 +169,7 @@ export function ImprovementPlan({ cycleId, talentId }: { cycleId: string; talent
                   <span className="font-semibold">How you’ll know it’s working: </span>
                   {area.measure}
                 </p>
+                <PlanNotes {...noteProps} scope={area.competency} notes={notes.filter((n) => n.scope === area.competency)} withVerdict />
               </div>
             ))}
           </div>
@@ -181,6 +202,8 @@ export function ImprovementPlan({ cycleId, talentId }: { cycleId: string; talent
           </div>
 
           <List title="Questions to bring to your manager" items={plan.content.manager_questions} />
+
+          <PlanNotes {...noteProps} scope={OVERALL} notes={notes.filter((n) => n.scope === OVERALL)} withVerdict={false} />
         </article>
       )}
     </section>

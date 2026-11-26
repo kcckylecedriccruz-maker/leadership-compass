@@ -32,6 +32,7 @@ function orgSuggestions(employees: Employee[], subjectProfileId: string, kind: C
   const byId = new Map(employees.map((e) => [e.id, e]));
   const subject = byId.get(subjectProfileId);
   const reportsOf = (id: string) => employees.filter((e) => e.manager_id === id).map((e) => e.id);
+  if (kind === 'immediate_manager') return new Set(subject?.manager_id ? [subject.manager_id] : []);
   if (kind === 'skip_level_manager') {
     const manager = subject?.manager_id ? byId.get(subject.manager_id) : undefined;
     return new Set(manager?.manager_id ? [manager.manager_id] : []);

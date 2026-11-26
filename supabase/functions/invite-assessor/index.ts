@@ -192,10 +192,8 @@ async function resolveAssessor(admin: Admin, talent: TalentRow, managerIds: stri
     return { id: profile.id, email: profile.email, fullName: profile.full_name, needsActivation: profile.activated_at === null };
   }
 
-  if (input.classification === "immediate_manager") {
-    throw new RequestError(409, "Immediate managers are assessors automatically for every open and draft cycle.");
-  }
-
+  // Immediate manager is chosen like any other employee: it applies to this cycle only and does not change the org
+  // structure (the org-structure manager is still added automatically when evaluations are built).
   if (!input.assessorEmail) throw new RequestError(400, "Enter the assessor's email address.");
   if (input.assessorEmail === talent.profile.email) {
     throw new RequestError(400, "The talent cannot be an assessor in this role.");
@@ -222,7 +220,7 @@ async function resolveAssessor(admin: Admin, talent: TalentRow, managerIds: stri
     if (existing.person_type === "external") {
       throw new RequestError(400, "This is an external rater. Choose the External type for them.");
     }
-    if (managerIds.includes(existing.id)) {
+    if (managerIds.includes(existing.id) && input.classification !== "immediate_manager") {
       throw new RequestError(400, "The immediate manager uses the Immediate manager type.");
     }
     return { id: existing.id, email: existing.email, fullName: existing.full_name, needsActivation: existing.activated_at === null };

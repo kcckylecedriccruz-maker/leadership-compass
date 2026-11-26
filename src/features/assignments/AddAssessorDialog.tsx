@@ -22,8 +22,8 @@ type AddAssessorDialogProps = {
   onClose: () => void;
 };
 
-// Everyone except Self and Immediate manager is chosen by email.
-const PERSON_TYPES: readonly Classification[] = ['skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'];
+// Everyone except Self is chosen from the list (or by email for external raters and someone new).
+const PERSON_TYPES: readonly Classification[] = ['immediate_manager', 'skip_level_manager', 'direct_report', 'skip_level_report', 'peer', 'external'];
 
 export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), assignedKinds = new Map(), onAdded, onClose }: AddAssessorDialogProps) {
   const [classification, setClassification] = useState<Classification | null>(null);
@@ -42,7 +42,7 @@ export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), assi
 
   function describe(option: Classification): string {
     if (option === 'immediate_manager') {
-      return 'Added automatically from the talent’s managers in every open and draft cycle.';
+      return `Rates ${talent.profile.full_name} as their manager in this cycle only. Org structure is not changed.`;
     }
     if (option === 'self') return `${talent.profile.full_name} completes their own assessment.`;
     return CLASSIFICATION_DESCRIPTIONS[option];
@@ -112,21 +112,19 @@ export function AddAssessorDialog({ cycle, talent, assignedIds = new Set(), assi
           <fieldset className="space-y-3">
             <legend className="mb-3 text-sm font-semibold">Who is this assessor?</legend>
             {CLASSIFICATIONS.map((option) => {
-              const disabled = option === 'immediate_manager';
               const checked = classification === option;
               return (
                 <label
                   key={option}
-                  className={`flex items-start gap-4 rounded-2xl border p-4 transition-colors duration-200 ${
+                  className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors duration-200 ${
                     checked ? 'border-primary bg-muted' : 'border-line bg-surface hover:bg-muted'
-                  } ${disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}
+                  }`}
                 >
                   <input
                     type="radio"
                     name="classification"
                     value={option}
                     checked={checked}
-                    disabled={disabled}
                     onChange={() => {
                       setClassification(option);
                       setError(null);

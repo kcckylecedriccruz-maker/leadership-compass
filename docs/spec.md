@@ -42,7 +42,7 @@ Users and Audit to non-admins. Notifications/Settings, Insights and Monitoring s
 - F8. Exclusions per person: not rated by others, does not rate others, no self-assessment.
 - F9. A cycle chooses which relationships to include (self, manager, skip-level, upward, upward skip-level, peers,
   external people) and builds the evaluations from the org structure when it opens; admins can refresh.
-- F10. Manual evaluations via Assignments (searchable employee list with org-chart suggestions, or someone new, or an external rater).
+- F10. Manual evaluations via Assignments, including an immediate manager for one cycle only (org structure unchanged) (searchable employee list with org-chart suggestions, or someone new, or an external rater).
 - F11. Admins restart a cycle (answers cleared) or delete it, confirmed by typing its name.
 
 ### 3.3 Giving feedback

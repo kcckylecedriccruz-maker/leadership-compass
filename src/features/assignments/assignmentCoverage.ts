@@ -27,6 +27,7 @@ export function coverageGroups(assignments: AssignmentRecord[], minGroupSize: nu
   });
 }
 
-export function isIncomplete(groups: CoverageGroup[]): boolean {
-  return groups.some((group) => !group.present);
+/** Incomplete until every required group has someone assigned and every assessor has submitted. */
+export function isIncomplete(groups: CoverageGroup[], assignments: Pick<AssignmentRecord, 'status'>[]): boolean {
+  return groups.some((group) => !group.present) || assignments.some((item) => item.status !== 'submitted');
 }

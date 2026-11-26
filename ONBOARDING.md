@@ -71,7 +71,7 @@ function secrets. Never put a key in code, chat or the repository.
 - Work on a branch and open a pull request; the owner deploys database and function changes unless you have access.
 
 ## 7. Current status and open to-dos
-Done: all features above live; 12 unit tests; CI and uptime workflows; monitoring; spec, architecture, PRD.
+Done: all features above live; 15 unit tests; CI and uptime workflows; monitoring; spec, architecture, PRD.
 
 Open:
 - [x] Code on GitHub (public), CI green.

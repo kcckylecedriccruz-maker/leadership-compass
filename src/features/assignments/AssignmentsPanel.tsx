@@ -221,9 +221,10 @@ function CycleAssignments({ cycle, talents, people, isAdmin, canAdd, managerView
   const shownIds = new Set(talents.map((talent) => talent.id));
   const shown = assignments.filter((item) => shownIds.has(item.talent_id));
   const submitted = shown.filter((item) => item.status === 'submitted').length;
-  const incompleteCount = talents.filter((talent) =>
-    isIncomplete(coverageGroups(assignments.filter((item) => item.talent_id === talent.id), cycle.min_group_size)),
-  ).length;
+  const incompleteCount = talents.filter((talent) => {
+    const own = assignments.filter((item) => item.talent_id === talent.id);
+    return isIncomplete(coverageGroups(own, cycle.min_group_size), own);
+  }).length;
 
   return (
     <div className="space-y-6">

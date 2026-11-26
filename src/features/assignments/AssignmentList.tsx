@@ -22,7 +22,7 @@ export function AssignmentList({ cycle, talent, assignments, people, isAdmin, ca
   const isClosed = cycle.status === 'closed';
   const details = [talent.position, talent.department].filter(Boolean).join(' · ');
   const groups = coverageGroups(assignments, cycle.min_group_size);
-  const incomplete = isIncomplete(groups);
+  const incomplete = isIncomplete(groups, assignments);
 
   return (
     <section className="space-y-5 rounded-card border border-line bg-canvas p-5 sm:p-6" aria-label={`Assessors for ${talent.profile.full_name}`}>
